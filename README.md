@@ -8,11 +8,6 @@ Antonin COLAJANNI <sup>1,2</sup>, Raluca URICARU<sup>2</sup>, Rodolphe THIÉBAUT
 
 Corresponding Author: antonin.colajanni@u-bordeaux.fr 
 
-**Contact:** 
-
-antonin.colajanni@u-bordeaux.fr
-
-
 **Keywords**
 
 Metatranscriptomic, Metagenomic, Microbial translocation, Public data, Benchmark
