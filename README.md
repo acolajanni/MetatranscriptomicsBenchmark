@@ -1,10 +1,10 @@
 # Metatranscriptomic classification in the study of microbial translocation
 
-Antonin COLAJANNI<sup>1,<sup>2, Raluca URICARU<sup>2, Rodolphe THIÉBAUT<sup>1, and Patricia THEBAULT<sup>2 
+Antonin COLAJANNI <sup>1,2</sup>, Raluca URICARU<sup>2</sup>, Rodolphe THIÉBAUT<sup>1</sup>, and Patricia THEBAULT<sup>2</sup> 
 
-<sup>1 Univ. Bordeaux, INSERM, INRIA, BPH, U1219, F-33000 Bordeaux, France 
+<sup>1</sup> Univ. Bordeaux, INSERM, INRIA, BPH, U1219, F-33000 Bordeaux, France 
 
-<sup>2 Univ. Bordeaux, CNRS, Bordeaux INP, LaBRI, UMR 5800, F-33400 Talence, France
+<sup>2</sup> Univ. Bordeaux, CNRS, Bordeaux INP, LaBRI, UMR 5800, F-33400 Talence, France
 
 Corresponding Author: antonin.colajanni@u-bordeaux.fr 
 
