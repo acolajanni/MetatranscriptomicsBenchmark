@@ -225,13 +225,12 @@ elif  [ $CLASSIF_1 = "spadesBlast" ] ; then
       name1=spadesBlast
 fi
 
-
 if    [ $CLASSIF_2 = "kuniq" ] ; then 
       classif_path2=${RESULTS_PATH}/kraken/microbialDB/kuniq/
       name2="kuniq"
 
 elif  [ $CLASSIF_2 = "kraken2" ] ; then 
-      classif_path2=${RESULTS_PATH}/kraken/nt/k2uniq/     
+      classif_path2=${RESULTS_PATH}/kraken/nt/kraken2/     
       name2="kraken2"
 fi
 
