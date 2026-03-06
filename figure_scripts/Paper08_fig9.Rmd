@@ -1,0 +1,1808 @@
+---
+title: "Analyze abundances-families"
+author: "Antonin Colajanni"
+date: "2025-05-09"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(echo=FALSE,
+  fig.width = 16,
+  fig.height = 9,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+```{r setup, include=FALSE}
+library(TaxaNorm)
+library(microbiome)
+library(mia)
+library(miaViz)
+
+
+library(stringr)
+library(plyr)
+library(ggplot2)
+library(dplyr)
+library(cowplot)
+
+library(tidyr)
+library(MASS)
+library("phyloseq")
+
+library(ggpubr)
+library(mixOmics)
+
+#remotes::install_github("KarstensLab/microshades", dependencies = TRUE)
+library(microshades)
+
+library(glmnet)
+library(compositions)
+```
+
+# Functions microbiota
+
+```{r function}
+
+boxcox_transform=function(v){
+  
+  var <- deparse(substitute(v))
+  f <- paste0(var, " ~ ", 1)
+  
+  model <- lm(f)
+  # at this step results$call = lm(formula = f), let's change it !
+  model$call <- call('lm', formula = formula(f))
+  
+  boxcox_model <- MASS::boxcox(model, plotit=FALSE ) 
+  
+  lambda <- boxcox_model$x[which.max(boxcox_model$y)]
+  if (abs(lambda) < 1e-6) {
+    y_trans <- log(v)
+  } else {
+    y_trans <- (v^lambda - 1) / lambda
+  }
+  return(y_trans)
+}
+
+get_tax_level <- function(level) {
+  # Normalize input to lowercase
+  level_lower <- tolower(level)
+  
+  # Define accepted names for each level
+  tax_levels <- list(
+    K  = c("k", "kingdom", "superkingdom"),
+    P  = c("p", "phylum"),
+    C  = c("c", "class"),
+    O  = c("o", "order"),
+    F  = c("f", "family"),
+    G  = c("g", "genus"),
+    S  = c("s", "species")
+  )
+  
+  # Find which tax level matches the input
+  for (name in names(tax_levels)) {
+    if (level_lower %in% tax_levels[[name]]) {
+      return(name)
+    }
+  }
+  
+  # If no match found
+  stop("Invalid taxonomic level")
+}
+
+#Format d'entrée: 3 colonnes - classif_df
+# .id - str, sample id
+# classification -  str normalized at a given lvl : all values must have same number of separator "|" ex: (k|p|c|o|f|g) , 
+# count - int number of read mapping on a specific OTU
+
+
+get_OTU_table = function(classif_df, annotate_tax_lvl=TRUE){
+  tax=c("K","P","C","O","F","G","S","T")
+
+  # Extract full classification from classif df (kingdom, phylum, ... etc)
+  OTU_vect = unique(classif_df$classification)
+  n_group=stringi::stri_count(OTU_vect[1], fixed = "|") + 1
+  
+  OTU_table <- do.call( rbind, lapply(OTU_vect , function(x) as.data.frame(t(strsplit(x, "\\|")[[1]])) ))
+  colnames(OTU_table)=tax[1:n_group]
+  OTU_table$classification=OTU_vect
+  
+  if(annotate_tax_lvl){
+    for (t in tax[1:n_group] ){
+      # annotate tax lvl into taxon_name if it is not already done
+      if( ! str_detect(OTU_table[[t]][1] , "__" ) ){
+        OTU_table[[t]] = paste0(tolower(t) ,"__",OTU_table[[t]])
+      }
+    }
+  }
+  
+  return(OTU_table) }
+
+
+ascend_unclassified_taxon<- function(aggregated_classif, OTU_table, lvl) {
+  # select only necessary columns of taxon table
+  tax=c("K","P","C","O","F","G","S","T")
+  tax=tax[1:which(tax == lvl)]
+  OTU = unique(OTU_table[,tax])
+  
+  aggregated_classif = merge(aggregated_classif[,c("classification",".id","count")] , 
+                             OTU, by.x="classification" , by.y = lvl)
+  
+  aggregated_classif$final_name=aggregated_classif$classification
+  
+  for (t in rev(tax)){
+    if (t == lvl){colname="classification"
+    } else{colname=t}
+    
+    # pas de rank au dessus de K, on fait rien
+    if (t=="K"){next}
+    
+    # annotate tax lvl into taxon_name if it is not already done
+    if( ! str_detect(aggregated_classif[[colname]][1] , "__" ) ){
+      aggregated_classif[[colname]] = paste0(tolower(t) ,"__",aggregated_classif[[colname]])
+    }
+    
+    minus1= rev(tax)[ which(rev(tax) == t)+1 ]
+
+    # Si unclassified a family, on prend order et ainsi de suite
+    aggregated_classif$final_name = ifelse( 
+      ( str_detect(aggregated_classif[[colname]] , "unclassified" ) & str_detect(aggregated_classif$final_name , "unclassified") ),
+      yes=aggregated_classif[[minus1]], 
+      no=aggregated_classif$final_name )
+  }
+  aggregated_classif$classification = aggregated_classif$final_name
+
+  return(aggregated_classif[,c("classification",".id","count")])
+  
+}
+
+
+ascend_rare_taxon = function(ascended_classif , OTU_table ,lvl , threshold ){
+  tax=c("K","P","C","O","F","G","S","T")
+  # get appropriate tax lvl name
+  lvl = get_tax_level(lvl)
+  lvl_minus1= tax[ which(tax == lvl)-1 ]
+  tax=tax[1:which(tax == lvl)]
+
+  count_classif=aggregate(count~classification, ascended_classif,sum)
+  
+  # Ascend groups 
+  to_ascend_lvl = count_classif[(count_classif$count < threshold & 
+                                   str_detect(count_classif$classification,
+                                     paste0(tolower(lvl),"__" ))) ,]$classification
+  
+  
+  to_ascend = ascended_classif[ascended_classif$classification %in% to_ascend_lvl, ]
+  no_need_ascend = ascended_classif[! ascended_classif$classification %in% to_ascend_lvl,]
+
+  OTU=OTU_table[OTU_table$G %in% to_ascend$classification,tax]
+  
+  unclassified_minus1=str_detect(OTU[[lvl_minus1]] , "unclassified")
+  
+  # Search the best level to ascend the rare taxon
+  OTU_unclassified=OTU[unclassified_minus1,]
+  OTU_classified = OTU[!unclassified_minus1,]
+  
+  df <- OTU_unclassified %>%
+    rowwise() %>%
+    mutate(lowest_tax = {
+      tax_levels <- c(F, O, C, P, K)  # reversed order
+      best_match <- tax_levels[!grepl("unclassified", tax_levels)][1]
+      best_match
+    }) %>%
+    ungroup()
+  
+  OTU_unclassified=df[,c(lvl,"lowest_tax")]
+  colnames(OTU_unclassified)=c("current","ascended")
+  OTU_classified=OTU_classified[,c(lvl,lvl_minus1)]
+  colnames(OTU_classified)=c("current","ascended")
+  
+  # Merge taxon where we ascend just one level, and taxon where we ascend more than 1 level
+  OTU_key=rbind(OTU_unclassified, OTU_classified )
+  
+  to_ascend=merge(to_ascend, OTU_key, by.x="classification", by.y="current")
+  to_ascend$classification = to_ascend$ascended
+  to_ascend$ascended=NULL
+  
+  # Merge to_ascend and the part of the df that doesn't needed to be ascended
+  v2=rbind(to_ascend,no_need_ascend)
+  v2=aggregate(count~.id+classification, v2, sum)
+  return(v2)
+  
+  #count_classif=aggregate(count~classification, v2,sum)
+
+
+}
+
+
+get_abundance_matrix = function(classif_df, lvl, count_threshold , prop_threshold= 0.001  ){
+  tax=c("K","P","C","O","F","G","S","T")
+  # get appropriate tax lvl name
+  lvl = get_tax_level(lvl)
+  lvl_minus1= tax[ which(tax == lvl)-1 ]
+
+  OTU=get_OTU_table(classif_df)
+  merged_classif=merge(classif_df , OTU, by="classification")
+  merged_classif$classification = merged_classif[[lvl]]
+  # aggregate values at the given classification level
+  aggregated_classif=aggregate(count ~ .id + classification, merged_classif, sum)  
+  
+  total_df=aggregate(count ~ .id, aggregated_classif, sum)
+  
+  # 1) Sélectionner que les classifiés au niveau qui nous intéresse
+    # No "unclassified" level remain at level asked by function
+  ascended_classif=ascend_unclassified_taxon(aggregated_classif, OTU, lvl)
+  # keep only relevant level
+  ascended_classif=ascended_classif[str_detect(ascended_classif$classification,paste0(tolower(lvl),"__")) , ]
+
+
+  # Searching for rare taxon to ascend one level
+  tmp_count=aggregate(count~classification,ascended_classif,sum)
+  tmp_count=merge(tmp_count, OTU[,c(lvl,lvl_minus1)],by.x="classification",by.y=lvl)
+  colnames(tmp_count)[colnames(tmp_count) == lvl_minus1] = "minus1"
+  count_lvl=aggregate(classification~minus1, tmp_count,length)
+  colnames(count_lvl) = c("minus1","n_lvl")
+  
+  tmp_count_minus1=aggregate(count~minus1,tmp_count,sum)
+  tmp_count_minus1=merge(tmp_count_minus1, count_lvl, by="minus1")
+ 
+  # remonter tout un genre à la famille si trop rare, sinon il sera filtré à la prochaine étape 
+      # Sauf si 1 famille = 1 genus (dans ce cas ça sert à rien de remonter)
+      # Sauf si lvl +1 est "unclassified"
+    
+  #threshold = length(unique(ascended_classif$.id)) * 5
+  threshold = count_threshold
+  
+  taxon_to_ascend=tmp_count_minus1[tmp_count_minus1$count < threshold & tmp_count_minus1$n_lvl > 1,]$minus1
+  
+  OTU_to_ascend=OTU[OTU[[lvl_minus1]] %in% taxon_to_ascend , c(lvl,lvl_minus1)  ]
+  OTU_to_ascend=OTU_to_ascend[!str_detect(OTU_to_ascend[[lvl_minus1]], "unclassified"), lvl]
+
+  ascended_classif=merge(ascended_classif, OTU[,c(lvl,lvl_minus1)],by.x="classification",by.y=lvl)
+  
+  colnames(ascended_classif) = c("classification",".id", "count", "minus1")
+  
+  ascended_classif$classification = ifelse(ascended_classif$classification %in% OTU_to_ascend, 
+                                           ascended_classif$minus1 , 
+                                           ascended_classif$classification  )
+  ascended_classif=unique(ascended_classif)
+  # Reaggregate to keep one value per taxon
+  ascended_classif=aggregate(count~classification+.id,ascended_classif,sum)
+  
+  df_proportion <- ascended_classif %>%
+  group_by(.id) %>%
+  mutate(total = sum(count),
+         prop = count / total) %>%
+  ungroup()
+
+  # Filter with proportion
+  df_proportion$to_keep = ifelse(df_proportion$prop > prop_threshold, 
+                                           TRUE , FALSE  )
+  
+  df_proportion=df_proportion[df_proportion$to_keep , ]
+  
+  df_proportion <- df_proportion %>%
+  group_by(.id) %>%
+  mutate(total = sum(count),
+         prop = count / total) %>%
+  ungroup()
+  
+  df_proportion$to_keep=NULL
+  
+  abundance_matrix <- pivot_wider(
+    df_proportion,
+    id_cols = "classification", 
+    names_from = ".id",         # New column for the quantitative variable names
+    values_from = "prop",            # New column for the values,
+    values_fill = 0
+  )
+  abundance_matrix[,c("count","total")]=NULL
+  
+  
+  return(list(
+    "classif_df"=df_proportion , 
+    "abundance_matrix"=abundance_matrix ))
+}
+
+
+# lvl="P"
+# full_table_df=results$classif_df
+# value_type="count"
+
+# Classif in abundance matrix starts with f__ or g__
+# full_table_df = table with classification, .id, count, prop, total
+get_taxmat_phyloseq_from_OTU=function(classif_df, lvl, full_table_df , value_type="proportion"){
+  tax=c("K","P","C","O","F","G","S","T")
+  # get appropriate tax lvl name
+  lvl = get_tax_level(lvl)
+  lvl_minus1= tax[ which(tax == lvl)-1 ]
+
+  taxmat=get_OTU_table(classif_df, annotate_tax_lvl=FALSE)
+  taxmat$classification=NULL
+  taxmat=unique(taxmat[,c(1:which(colnames(taxmat)==lvl))])
+  
+  if (value_type == "count"){
+    abundance_matrix <- pivot_wider(
+      full_table_df, id_cols = "classification", 
+      names_from = ".id", values_from = "count", values_fill = 0)
+    
+    } else if (value_type == "proportion"){
+    abundance_matrix <- pivot_wider(
+      full_table_df, id_cols = "classification", 
+      names_from = ".id",values_from = "prop", values_fill = 0) 
+    }
+    
+  abundance_matrix[,c("count","total")]=NULL
+  
+  taxon = abundance_matrix$classification
+  l_1   = taxon[ str_detect(taxon, paste0(tolower(lvl),"__")) ]
+  l_2   = taxon[ str_detect(taxon, paste0(tolower(lvl_minus1),"__")) ]
+  
+  taxmat[[lvl]] =  paste0(tolower(lvl),"__",taxmat[[lvl]] )
+  taxmat[[lvl_minus1]] =  paste0(tolower(lvl_minus1),"__",taxmat[[lvl_minus1]] )
+  
+  # Need to adapt the table: for the levels that have been ascended one level: taxon lvl-1 = taxon lvl 
+  taxmat[[lvl]] = ifelse(taxmat[[lvl_minus1]] %in% l_2 , 
+                         taxmat[[lvl_minus1]] , 
+                         taxmat[[lvl]])
+  taxmat=unique(taxmat)
+  row.names(taxmat)=paste0("OTU_",c(1:nrow(taxmat)))
+  
+  copy_tax=taxmat
+  
+  key=taxmat[[lvl]]
+  key=data.frame(list(classification=taxmat[[lvl]] , OTU=row.names(taxmat)))
+
+  abundance_matrix=merge(abundance_matrix, key, by="classification")
+  row.names(abundance_matrix)=abundance_matrix$OTU
+  abundance_matrix$classification = NULL
+  abundance_matrix$OTU = NULL
+  
+  OTU = otu_table(as.matrix(abundance_matrix), taxa_are_rows = TRUE)
+  TAX = tax_table(as.matrix(taxmat))
+  physeq = phyloseq(OTU, TAX)
+  
+  return(list("physeq"=physeq, "taxo"=copy_tax) )
+
+}
+
+# Get diversity metrics and total count of seq per patient_id
+get_diversity_metrics=function(classif_df, lvl, full_table_df){
+  physeq=get_taxmat_phyloseq_from_OTU(classif_df, lvl, full_table_df, "count")$physeq
+  richness=estimate_richness(physeq)
+  richness$.id=row.names(richness)
+  richness=merge(richness, metadata, bu=".id")
+  
+  n_seq=unique(full_table_df[,c(".id","total")])
+  richness=merge(richness,n_seq,by=".id")
+  
+  return(richness)
+}
+
+
+library(microshades)
+
+# Physeq object need to already be subseted with a sample column
+# Ex:   
+#   sample_data(physeq)=sampledata  
+#   physeq <- subset_samples(physeq,subject_classification %in%c("Responder","Non_responder"))
+#
+# subgroup_lvl="P"
+# group_lvl="K"
+# full_table_df=full_table
+# cvd=TRUE
+plot_with_microshades=function(physeq , subgroup_lvl, group_lvl, full_table_df, cvd=TRUE ){
+  
+  # 1) extract most frequent taxon : "group_lvl"
+  tax=as.data.frame(tax_table(physeq))
+  
+  
+  tax[[group_lvl]] = sapply(tax[[group_lvl]] , function(x) str_remove(x, paste0(tolower(group_lvl),"__" ) ) )
+  tax_table(physeq) = as.matrix(tax)
+  
+
+  
+  merged_tax=merge(tax,full_table_df, by.y="classification",by.x=subgroup_lvl)
+  prop_total=aggregate(prop ~ get(group_lvl), merged_tax, sum )
+  colnames(prop_total) = c(group_lvl, "freq")
+  
+  prop_total=prop_total[order(-prop_total$freq) , ]
+  selected_groups=prop_total[[group_lvl]]
+  if(length(selected_groups) > 5 ){
+    selected_groups=selected_groups[1:5]
+  }
+  
+  
+  # Use microshades function prep_mdf to agglomerate, normalize, and melt the phyloseq object
+  mdf_prep <- prep_mdf(physeq, subgroup_level = subgroup_lvl)
+  
+  
+  # Create a color object for the specified data
+  colors_physeq <- create_color_dfs(mdf_prep,                                            
+                                    selected_groups = selected_groups, 
+                                    top_n_subgroups = 4,
+                                    group_level = group_lvl, 
+                                    subgroup_level = subgroup_lvl, 
+                                    cvd = cvd)
+      
+  # Extract
+  mdf_colors_physeq <- colors_physeq$mdf
+  cdf_colors_physeq <- colors_physeq$cdf
+  
+  # Ajust colors if less than 5 genus for a given grouplvl
+  group_column=paste0("Top_",group_lvl)
+  count_colors=as.data.frame(table(cdf_colors_physeq[[group_column]] ))
+  missing_variety=count_colors[count_colors$Freq < 5 ,]
+  
+  if(nrow(missing_variety)!=0){
+    
+    missing_variety=count_colors[count_colors$Freq < 5 ,]$Var1
+    if(length(missing_variety)>1 ){missing_variety=missing_variety[1]}
+    
+    id_missing=which(selected_groups == missing_variety)[1]
+    
+    
+    if(cvd){muhades_palette=microshades_cvd_palettes
+    }else  {muhades_palette=microshades_palettes}
+    
+    if (length(selected_groups) < 5){
+      palette=muhades_palette[[6]]
+    }else{ palette=muhades_palette[[id_missing+1]] }
+
+    n_color=count_colors[count_colors$Var1 == missing_variety,]$Freq
+    
+    # If less than 4 subgroup for this group, demanding higher contrast
+    if(n_color < 4 & n_color > 1 ){
+      colors_range=c(palette[2], palette[length(palette)])
+      new_colors=rev(colorRampPalette(colors_range)(n_color))
+      
+      change_color=cdf_colors_physeq[cdf_colors_physeq[[group_column]] == missing_variety ,]
+      change_color$hex = new_colors
+      
+      cdf_colors_physeq[cdf_colors_physeq[[group_column]] == missing_variety ,] = change_color
+      }
+  }
+  
+  # Reorder taxons
+  color_objs_reorder_ab <- reorder_samples_by(mdf_colors_physeq,
+                                              cdf_colors_physeq,
+                                              group_level = group_lvl ,subgroup_level = subgroup_lvl,
+                                              order_tax = selected_groups[1])
+  
+  
+  mdf_colors_physeq <- color_objs_reorder_ab$mdf
+  cdf_colors_physeq <- color_objs_reorder_ab$cdf
+  
+
+  legend_1 <- custom_legend(mdf_colors_physeq, cdf_colors_physeq,
+                            group_level = group_lvl ,subgroup_level = subgroup_lvl,                            
+                            x = "Sample",
+                            y = "Abundance",
+                            legend_key_size = 1, legend_text_size = 12, legend_orientation = "vertical")
+                            
+  
+    
+  plots <- lapply(unique(mdf_colors_physeq$subject_classification), function(subj) {
+    df_sub <- subset(mdf_colors_physeq, subject_classification == subj)
+    plot_microshades(df_sub, cdf_colors_physeq) +
+      ggtitle(subj) +
+      scale_y_continuous(labels = scales::percent, expand = expansion(0)) +
+      theme(
+        axis.text.x.bottom = element_blank(),
+        plot.title = element_text(hjust = 0.5, face="bold", size = 14),
+        legend.position = "none",
+        text = element_text(size = 10),
+        axis.text.x = element_text(size = 6, angle = 90, hjust = 1)
+      )
+  })
+  plots
+  
+  p=cowplot::plot_grid(
+    plots[[1]] , NULL ,
+    plots[[2]] + theme(axis.text.y = element_blank() , axis.title.y = element_blank())
+    , legend_1, nrow=1 , rel_widths = c(7, 0.15, 2 ,1.5)) 
+
+
+ return(p)
+}
+  
+select_reference_taxon=function(abund_mat , metadata){
+  # row = taxon // column = patient 
+  mat = abund_mat
+  classif = mat$classification
+  pid = colnames(mat)[-1]
+  mat$classification = NULL
+  row.names(mat)=classif
+  
+  # 1. Transpose X: now rows = patients, columns = taxa
+  X_t <- t(mat)
+  
+  # 2. Match metadata to X_t rows (patients)
+  metadata <- metadata[match(rownames(X_t), metadata$.id), ]
+  
+  # 3. Initialize results
+  zero_counts <- colSums(X_t == 0)
+  taxon_vars <- apply(X_t, 2, var, na.rm = TRUE)
+  taxon_pvals <- apply(X_t, 2, function(x) {
+    tryCatch({
+      wilcox.test(x ~ metadata$subject_classification)$p.value
+    }, error = function(e) NA)
+  })
+  
+  # 4. Combine into ranking table
+  ranking_df <- data.frame(
+    Taxon = colnames(X_t),
+    Zeros = zero_counts,
+    Variance = taxon_vars,
+    Wilcox_p = taxon_pvals
+  )
+  ranking_df = ranking_df[ranking_df$Wilcox_p > 0.2 , ]  # remove with significant pvalue
+  ranking_df <- subset(ranking_df, Zeros < 0.5 * ncol(mat))  # remove taxa with >90% zeros
+  
+  # 5. Order by:
+  #   - Fewest zeros
+  #   - Lowest variance
+  #   - Highest Wilcoxon p-value (non-differential)
+  ranking_df <- ranking_df[order(ranking_df$Variance, -ranking_df$Wilcox_p, ranking_df$Zeros), ]
+  ranking_df$ZeroPenalty <- (ranking_df$Zeros / nrow(metadata))^2  # ncol = number of patients
+  
+  # Normalize direction: lower is better for Zeros and Variance, higher is better for p-value
+  ranking_df$Zeros_rank    <- rank(ranking_df$Zeros, ties.method = "min")
+  ranking_df$Variance_rank <- rank(ranking_df$Variance, ties.method = "min")
+  ranking_df$Pval_norm <- 1 - normalize(ranking_df$Wilcox_p)
+
+  ranking_df$Score <- 
+    0.4 * ranking_df$Zeros_rank + 0.5 * ranking_df$Variance_rank + 0.1 * ranking_df$Pval_norm + 10 * ranking_df$ZeroPenalty 
+    
+
+  # Step 6: Sort by total score
+  ranking_df <- ranking_df[order(ranking_df$Score), ]
+  return(list("ranking" = ranking_df , "best"=ranking_df$Taxon[1] ))
+}
+
+#Binary / CLR / ALR / ILR / arcsin-sqrt 
+transform_abundance_matrix=function(abundance_matrix, transform = "binary" , reference_tax="g__Roseateles"){
+  
+  mat = abundance_matrix
+  classif = abundance_matrix$classification
+  pid = colnames(abundance_matrix)[-1]
+  mat$classification = NULL
+  row.names(mat)=classif
+  
+  
+  switch(transform,
+         "binary" = {
+           message("Performing binary transformation...")
+           mat[mat != 0 ] = 1
+           mat <- mat[! (classif == reference_tax), ]
+           rownames(mat) = classif[classif != reference_tax]
+           abundance_matrix = mat
+           
+         },
+         "CLR" = {
+           message("Performing CLR transformation...")
+           
+           X_t <- t(mat)
+           X_t <- X_t[ , classif != reference_tax ]
+           
+           X_acomp <- acomp(X_t)
+           abundance_matrix <- as.data.frame(t(clr(X_acomp)))   # Returns D columns
+         },
+         "ALR" = {
+           message("Performing ALR transformation...")
+           
+           X_t <- t(mat)
+           X_t[, reference_tax][X_t[, reference_tax] == 0] <- 0.001   # replacing 0s in the reference column
+           X_t[X_t == 0] <- 0.001 # replacing 0s
+           
+           X_acomp <- acomp(X_t)
+           abundance_matrix <- as.data.frame(t(alr(X_acomp,ivar = reference_tax )))   # Returns D columns
+           
+         },
+         "arcSine" = {
+           message("Performing arcsin-sqrt transformation...")
+           abundance_matrix=apply(mat, 2, function(x) asin(sqrt(x)) )
+           abundance_matrix <- as.data.frame(abundance_matrix[ classif != reference_tax , ])
+
+         },
+         "Proportion" = {
+           message("Performing Proportion transformation...")
+           mat <- mat[! (classif == reference_tax), ]
+           rownames(mat) = classif[classif != reference_tax]
+           
+           X_t <- t(mat)
+           X_acomp <- acomp(X_t)
+           abundance_matrix = t(as.data.frame(X_acomp))
+           
+           
+         },
+         stop("Invalid transform type")
+  )
+
+  return(t(abundance_matrix))
+}
+
+# abundance_matrix=get_abundance_matrix(classif_df, lvl , n_patient*5, 0.001 )$abundance
+# best_tax=select_reference_taxon(abundance_matrix, metadata )
+# 
+# lvl="G"
+# 
+# X1 = transform_abundance_matrix(
+#   as.data.frame(get_abundance_matrix(classif_df, lvl , n_patient*5, 0.001 )$abundance) , "binary" , best_tax$best )
+# 
+# X2 = transform_abundance_matrix(
+#   as.data.frame(get_abundance_matrix(classif_df, lvl , n_patient*5, 0.001 )$abundance) , "CLR", best_tax$best)
+# 
+# X3 = transform_abundance_matrix(
+#   as.data.frame(get_abundance_matrix(classif_df, lvl , n_patient*5, 0.001 )$abundance) , "arcSine", best_tax$best)
+# 
+# X4 = transform_abundance_matrix(
+#   as.data.frame(get_abundance_matrix(classif_df, lvl , n_patient*5, 0.001 )$abundance) , "ALR", best_tax$best)
+
+
+lasso_selection=function(X, y , colname){
+  # Fit cross-validated LASSO
+  lassoCV <- cv.glmnet(X,y,alpha=1 , nfolds = 20 )
+  best.lambda <- lassoCV$lambda.min
+  # Coefficients at the best lambda
+  tmp_coeffs <- coef(lassoCV, s = best.lambda)
+  coeffs_vector <- as.vector(tmp_coeffs)
+  names(coeffs_vector) <- rownames(tmp_coeffs)
+  
+  # Extract non-zero coefficients (excluding intercept)
+  non_zero_vars <- names(coeffs_vector)[coeffs_vector != 0 & names(coeffs_vector) != "(Intercept)"]
+
+  coeff_df=as.data.frame(coeffs_vector)
+  colnames(coeff_df) = colname
+  return(list("coef_df" = coeff_df , 
+              "non_zero_vars" = non_zero_vars , 
+              "model" = lassoCV))
+  
+}
+
+
+
+lasso_bootstrap_selection=function(X, y , n_boot=500, ncores=12){
+  
+  selected_vars_list <- vector("list", n_boot)
+  coeff_vars_list <- vector("list", n_boot)
+
+    n=nrow(X)
+
+  ncores=12
+  model=parallel::mclapply(1:n_boot , function(x){
+    # Bootstrap sample (rows)
+    boot_idx <- sample(1:n, replace = TRUE)
+    X_boot <- X[boot_idx, ]
+    y_boot <- y[boot_idx]
+    
+    # Fit LASSO with cross-validation
+    lassoCV <- cv.glmnet(X_boot, y_boot, alpha = 1, nfolds = 10)
+    best_lambda <- lassoCV$lambda.min
+    coeffs <- coef(lassoCV, s = best_lambda)
+    
+    # Extract non-zero variables (excluding intercept)
+    coeffs_vec <- as.vector(coeffs)
+    names(coeffs_vec) <- rownames(coeffs)
+    # non_zero_vars <- names(coeffs_vec)[coeffs_vec != 0 & names(coeffs_vec) != "(Intercept)"]
+    
+    # Store selected variables
+    return(coeffs_vec[-1])},
+    mc.cores = ncores)
+  
+    coeff_vars_df=ldply(model)
+    non_zero_vars <- as.data.frame(colSums(coeff_vars_df != 0))
+    non_zero_vars$taxon=row.names(non_zero_vars)
+    colnames(non_zero_vars) = c("Freq" , "taxon")
+    
+    non_zero_vars <- non_zero_vars[order(-non_zero_vars$Freq) , ]
+
+  return(list(
+    "selection_freq"=non_zero_vars , 
+    "coeff_df" = coeff_vars_df))
+}
+
+
+```
+
+
+# Load Data
+
+```{r import}
+
+
+### V A R I A B L E S ###
+dataset="Douek_Cleveland"
+path = "~/"
+print(dataset)
+
+path_result=paste0(path,"/results/",dataset)
+path_data=paste0(path,"/data/",dataset)
+
+sra_list=readLines(paste0(path_data,"/sra_list_RNA.txt"))
+sra_metadata=read.table(paste0(path_data,"/sra_metadata.tsv"),header=TRUE)
+
+
+### L O A D I N G ###
+ranks=c("superkingdom","phylum", "class", "order", "family", "genus")
+
+RunTable=read.table(paste0(path_data, "/SraRunTable.csv"),
+                    sep=",", header = TRUE)
+RunTable=RunTable[,c(1,9,34,33,31)]
+RunTable=RunTable[RunTable$Run %in% sra_list,]
+
+RunTable$cd4_count = as.numeric(str_replace(RunTable$cd4_count, ",", "."))
+RunTable$cd8_count = as.numeric(str_replace(RunTable$cd8_count, ",", "."))
+RunTable$cd4_categorical <- cut(RunTable$cd4_count,
+                                breaks = quantile(RunTable$cd4_count, probs = seq(0, 1, 0.25), na.rm = TRUE),
+                                include.lowest = TRUE,
+                                labels = c("Q1", "Q2", "Q3", "Q4"))
+
+RunTable$subject_classification=sapply(RunTable$subject_classification, function(x)str_split(x, pattern = " ")[[1]][1] )
+RunTable$.id=paste0(RunTable$Run, "|", RunTable$subject_classification)
+RunTable=RunTable[,c(1:3,5,6)]
+RunTable$cd4_ratio=RunTable$cd4_count/RunTable$cd8_count
+
+ranks=c("superkingdom","phylum", "class", "order", "family", "genus")
+#
+
+#ku_hybrid_dir=paste0(path,"results/Douek_Cleveland/hybrid/hybrid_Blast-kuniq/")
+ku_hybrid_dir=paste0(path,"results/Douek_Cleveland/hybrid/hybrid_spadesBlast-kuniq/")
+
+
+
+classif_ku=read.table(paste0(ku_hybrid_dir,"classif_df_genus.csv"), sep=",", header = TRUE)
+classification=read.table(paste0(ku_hybrid_dir,"classification_genus.csv"), sep=",", header = TRUE)
+load(paste0(ku_hybrid_dir,"Quantification_list_genus.RData"))
+
+
+classif_list=classif_ku
+Gorganvirus="Viruses|Uroviricota|Caudoviricetes|unclassified Caudoviricetes order|unclassified Caudoviricetes family|Gorganvirus"
+classif_uro = classif_list[str_detect(classif_list$classification, "Uroviricota"),]
+classif_list=classif_list[classif_list$classification != Gorganvirus,]
+
+
+metadata=read.csv(paste0(path_data,"/Metadata.csv"))
+metadata$tmp=sapply(metadata$subject_classification, function(x) str_split(x, fixed(" "))[[1]][1] )
+metadata$patient_name=paste0(metadata$tmp , "|", metadata$Run)
+metadata=metadata[c(1,3)]
+colnames(metadata) = c(".id","subject_classification")
+
+tax=c("K","P","C","O","F","G","S","T")
+classif_df=classif_list[,c(1:3)]
+
+total=aggregate(count ~ .id, classif_df,sum)
+
+
+n_patient=nrow(metadata)
+```
+
+# Microshades figures - abundance plots
+
+## Microshades - Hybrid-KUniq
+
+```{r test_microshades, echo=TRUE, eval=TRUE}
+
+lvl="G"
+lvl_group="P"
+
+results=get_abundance_matrix(classif_df, lvl , n_patient*5, 0.001 )
+full_table=results$classif_df
+abundance=results$abundance_matrix
+
+tmp=get_taxmat_phyloseq_from_OTU(classif_df, lvl, full_table, "count")
+physeq=tmp$physeq
+
+###
+sampledata=RunTable
+row.names(sampledata)=sampledata$Run
+sampledata$.id=sampledata$Run
+sampledata$Run=NULL
+
+sample_data(physeq)=sampledata
+physeq <- subset_samples(physeq,subject_classification %in%c("Responder","Non_responder"))
+
+
+
+
+p=plot_with_microshades(physeq, subgroup_lvl = lvl,
+                      group_lvl = lvl_group,
+                      full_table_df = full_table, cvd=TRUE)
+p
+
+
+# ggsave(p,filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/abundance.jpeg"),
+#        device = "jpeg",width = 40, height = 26,dpi = 350 , units = "cm", create.dir = TRUE)
+
+
+
+
+```
+
+## Microshades - Paper results
+
+```{r test_microshades-TPM, echo=TRUE, eval=TRUE}
+
+lvl="G"
+lvl_group="P"
+
+
+paper_results = paste0(path,"/data/Douek_Cleveland/GSE172557_Cleveland_PathSeq_TPM.xlsx")
+genus_paper= paste0(path,"/data/Douek_Cleveland/TPM_Genus_2025.txt")
+data <- readxl::read_excel(path = paper_results)
+genus_TPM <- read.delim( genus_paper)
+
+tax_lvl=colnames(data)[1:7]
+
+data=merge(genus_TPM, data, by.x = "OG_name", by.y="Genus")
+data=data[,!colnames(data) %in% c(tax_lvl, 'taxid',"OG_name") ]
+
+
+
+
+sample_name=sra_metadata[str_detect(pattern = "RNA_",string = sra_metadata$Title),]
+sample_name$name=str_remove(sample_name$Title , "RNA_")
+sample_name$name=paste0(sample_name$name, "_RNA")
+data=data[,c(colnames(data)[1:6],sample_name$name)]
+
+data$classification <- apply(data[ , 1:6], 1, paste, collapse = "|")
+data[ , 1:6]=NULL
+df_long <- data %>%
+  pivot_longer(-classification, names_to = "Sample", values_to = "TPM")
+
+df_long = merge(df_long, sample_name, by.x='Sample', by.y="name" )
+df_long=aggregate(TPM ~ Run + classification, df_long, sum)
+
+colnames(df_long)=c(".id","classification","count")
+
+
+results=get_abundance_matrix(df_long, lvl , 0, 0 )
+full_table=results$classif_df
+# full_table$prop = full_table$count / 1e+6
+abundance=results$abundance_matrix
+
+
+
+
+tmp=get_taxmat_phyloseq_from_OTU(df_long, lvl, full_table, "count")
+physeq=tmp$physeq
+
+###
+sampledata=RunTable
+row.names(sampledata)=sampledata$Run
+sampledata$.id=sampledata$Run
+sampledata$Run=NULL
+
+sample_data(physeq)=sampledata
+physeq <- subset_samples(physeq,subject_classification %in%c("Responder","Non_responder"))
+
+
+
+
+p=plot_with_microshades(physeq, subgroup_lvl = lvl,
+                      group_lvl = lvl_group,
+                      full_table_df = full_table, cvd=TRUE)
+p
+
+# 
+# ggsave(p,filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/abundance_from_TPM.jpeg"),
+#        device = "jpeg",width = 40, height = 26,dpi = 350 , units = "cm", create.dir = TRUE)
+
+
+
+
+```
+
+### Microshades - merge two results (function)
+
+```{r test_microshades-merge, echo=TRUE }
+
+
+# Physeq object need to already be subseted with a sample column
+# Ex:   
+#   sample_data(physeq)=sampledata  
+#   physeq <- subset_samples(physeq,subject_classification %in%c("Responder","Non_responder"))
+#
+# subgroup_lvl="P"
+# group_lvl="K"
+# full_table_df=full_table
+# cvd=TRUE
+plot_with_microshades2_large=function(physeq , subgroup_lvl, 
+                                group_lvl, 
+                                full_table_df, 
+                                susbset_column="subject_classification", 
+                                cvd=TRUE , only_bacteria=FALSE , 
+                                ordering="Paper", final_colors=data.frame() ){
+  
+  # 1) extract most frequent taxon : "group_lvl"
+  tax=as.data.frame(tax_table(physeq))
+  
+  
+  tax[[group_lvl]] = sapply(tax[[group_lvl]] , function(x) str_remove(x, paste0(tolower(group_lvl),"__" ) ) )
+  tax_table(physeq) = as.matrix(tax)
+  
+  
+  
+  merged_tax=merge(tax,full_table_df, by.y="classification",by.x=subgroup_lvl)
+  prop_total=aggregate(prop ~ get(group_lvl), merged_tax, sum )
+  colnames(prop_total) = c(group_lvl, "freq")
+  
+  prop_total=prop_total[order(-prop_total$freq) , ]
+  selected_groups=prop_total[[group_lvl]]
+  if(length(selected_groups) > 5 ){
+    selected_groups=selected_groups[1:5]
+  }
+  if(only_bacteria){
+    selected_groups=selected_groups[selected_groups != "Planctomycetota"]
+  }
+  
+  
+  # Use microshades function prep_mdf to agglomerate, normalize, and melt the phyloseq object
+  mdf_prep <- prep_mdf(physeq, subgroup_level = subgroup_lvl)
+  
+  
+  # Create a color object for the specified data
+  colors_physeq <- create_color_dfs(mdf_prep,                                            
+                                    selected_groups = selected_groups, 
+                                    top_n_subgroups = 4,
+                                    group_level = group_lvl, 
+                                    subgroup_level = subgroup_lvl, 
+                                    cvd = cvd)
+  
+  # Extract
+  mdf_colors_physeq <- colors_physeq$mdf
+  cdf_colors_physeq <- colors_physeq$cdf
+  
+  # Ajust colors if less than 5 genus for a given grouplvl
+  group_column=paste0("Top_",group_lvl)
+  count_colors=as.data.frame(table(cdf_colors_physeq[[group_column]] ))
+  missing_variety=count_colors[count_colors$Freq < 5 ,]
+  
+  if(nrow(missing_variety)!=0){
+    
+    missing_variety=count_colors[count_colors$Freq < 5 ,]$Var1
+    if(length(missing_variety)>1 ){missing_variety=missing_variety[1]}
+    
+    id_missing=which(selected_groups == missing_variety)[1]
+    
+    
+    if(cvd){muhades_palette=microshades_cvd_palettes
+    }else  {muhades_palette=microshades_palettes}
+    
+    if (length(selected_groups) < 5){
+      palette=muhades_palette[[6]]
+    }else{ palette=muhades_palette[[id_missing+1]] }
+    
+    n_color=count_colors[count_colors$Var1 == missing_variety,]$Freq
+    
+    # If less than 4 subgroup for this group, demanding higher contrast
+    if(n_color < 4 & n_color > 1 ){
+      colors_range=c(palette[2], palette[length(palette)])
+      new_colors=rev(colorRampPalette(colors_range)(n_color))
+      
+      change_color=cdf_colors_physeq[cdf_colors_physeq[[group_column]] == missing_variety ,]
+      change_color$hex = new_colors
+      
+      cdf_colors_physeq[cdf_colors_physeq[[group_column]] == missing_variety ,] = change_color
+    }
+  }
+  
+  
+  ##############################################################################
+  #order one type only 
+  if (ordering == "Paper"){ physeq1 <- subset_samples(physeq,origin != "Hybrid-KUniq") }
+  else {                    physeq1 <- subset_samples(physeq,origin == "Hybrid-KUniq") }
+
+  
+  mdf_prep1 <- prep_mdf(physeq1, subgroup_level = subgroup_lvl)
+
+  if(only_bacteria){
+    selected_groups=selected_groups[selected_groups != "Planctomycetota"]
+  }
+
+  # Create a color object for the specified data
+  colors_physeq1 <- create_color_dfs(mdf_prep1,
+                                     selected_groups = selected_groups,
+                                     top_n_subgroups = 4,
+                                     group_level = group_lvl,
+                                     subgroup_level = subgroup_lvl,
+                                     cvd = cvd)
+
+  # Extract
+  mdf_colors_physeq1 <- colors_physeq1$mdf
+  cdf_colors_physeq1 <- colors_physeq1$cdf
+
+  ids_order <- reorder_samples_by(mdf_colors_physeq1, cdf_colors_physeq1,
+                                  #sample_ordering = expanded_ids,
+                                  group_level = group_lvl ,subgroup_level = subgroup_lvl,
+                                  order_tax = selected_groups[1])$mdf
+  ids_order = levels(ids_order$Sample)
+
+  ids_order = str_remove_all(ids_order, "_Hybrid|_Paper")
+  expanded_ids <- paste0(rep(ids_order, each = 2), c("_Hybrid", ""))
+  ##############################################################################
+  
+  
+  color_objs_reorder_ab <- reorder_samples_by(mdf_colors_physeq, cdf_colors_physeq,
+                                              sample_ordering = expanded_ids,
+                                              group_level = group_lvl ,subgroup_level = subgroup_lvl,
+                                              order_tax = selected_groups[1])
+  
+  mdf_colors_physeq <- color_objs_reorder_ab$mdf
+  cdf_colors_physeq <- color_objs_reorder_ab$cdf
+  
+  if(nrow(final_colors) > 0) {cdf_colors_physeq = final_colors}
+  
+  legend_1 <- custom_legend(mdf_colors_physeq, cdf_colors_physeq,
+                            group_level = group_lvl ,subgroup_level = subgroup_lvl,                   
+                            x = "Sample",
+                            y = "Abundance",
+                            legend_key_size = 1, legend_text_size = 15, 
+                            legend_orientation = "vertical")
+  
+  
+  
+  plots <- lapply(unique(mdf_colors_physeq[[susbset_column]]), function(subj) {
+    df_sub <- subset(mdf_colors_physeq, get(susbset_column) == subj)
+    plot_microshades(df_sub, cdf_colors_physeq) +
+      ggtitle(subj) +
+      scale_y_continuous(labels = scales::percent, expand = expansion(0)) +
+      theme_linedraw() +
+      theme(
+        strip.background = element_rect(fill="#333333", color="black") , 
+        strip.text = element_text(size = 14, face = "bold",color="white"),
+        axis.text.x.bottom =element_text(size = 6, angle = 45, hjust = 1) ,
+        plot.title = element_text(hjust = 0.5, face="bold", size = 14),
+        legend.position = "none",
+        text = element_text(size = 10),
+        axis.text.x = element_text(size = 6, angle = 90, hjust = 1)
+      ) + 
+      facet_grid(~subject_classification , scales="free_x",space="free_x"  ) 
+
+    
+    
+  })
+  
+  p=cowplot::plot_grid(
+    plots[[1]] , NULL ,
+    plots[[2]] + theme(axis.text.y = element_blank() , axis.title.y = element_blank())
+    , legend_1, nrow=1 , rel_widths = c(5, 0.15, 4 ,1.5)) 
+  
+  
+  return(list("final_plot"=p ,"plot_list"=plots, "legend" = legend_1 , "colors"=cdf_colors_physeq))
+}
+
+
+
+plot_with_microshades2=function(physeq , subgroup_lvl, 
+                                group_lvl, 
+                                full_table_df, 
+                                susbset_column="subject_classification", 
+                                cvd=TRUE , only_bacteria=FALSE , 
+                                ordering="Paper", final_colors=data.frame() ){
+  
+  # 1) extract most frequent taxon : "group_lvl"
+  tax=as.data.frame(tax_table(physeq))
+  
+  
+  tax[[group_lvl]] = sapply(tax[[group_lvl]] , function(x) str_remove(x, paste0(tolower(group_lvl),"__" ) ) )
+  tax_table(physeq) = as.matrix(tax)
+  
+  
+  
+  merged_tax=merge(tax,full_table_df, by.y="classification",by.x=subgroup_lvl)
+  prop_total=aggregate(prop ~ get(group_lvl), merged_tax, sum )
+  colnames(prop_total) = c(group_lvl, "freq")
+  
+  prop_total=prop_total[order(-prop_total$freq) , ]
+  selected_groups=prop_total[[group_lvl]]
+  if(length(selected_groups) > 5 ){
+    selected_groups=selected_groups[1:5]
+  }
+  if(only_bacteria){
+    selected_groups=selected_groups[selected_groups != "Planctomycetota"]
+  }
+  
+  
+  # Use microshades function prep_mdf to agglomerate, normalize, and melt the phyloseq object
+  mdf_prep <- prep_mdf(physeq, subgroup_level = subgroup_lvl)
+  
+  
+  # Create a color object for the specified data
+  colors_physeq <- create_color_dfs(mdf_prep,                                            
+                                    selected_groups = selected_groups, 
+                                    top_n_subgroups = 4,
+                                    group_level = group_lvl, 
+                                    subgroup_level = subgroup_lvl, 
+                                    cvd = cvd)
+  
+  # Extract
+  mdf_colors_physeq <- colors_physeq$mdf
+  cdf_colors_physeq <- colors_physeq$cdf
+  
+  # Ajust colors if less than 5 genus for a given grouplvl
+  group_column=paste0("Top_",group_lvl)
+  count_colors=as.data.frame(table(cdf_colors_physeq[[group_column]] ))
+  missing_variety=count_colors[count_colors$Freq < 5 ,]
+  
+  if(nrow(missing_variety)!=0){
+    
+    missing_variety=count_colors[count_colors$Freq < 5 ,]$Var1
+    if(length(missing_variety)>1 ){missing_variety=missing_variety[1]}
+    
+    id_missing=which(selected_groups == missing_variety)[1]
+    
+    
+    if(cvd){muhades_palette=microshades_cvd_palettes
+    }else  {muhades_palette=microshades_palettes}
+    
+    if (length(selected_groups) < 5){
+      palette=muhades_palette[[6]]
+    }else{ palette=muhades_palette[[id_missing+1]] }
+    
+    n_color=count_colors[count_colors$Var1 == missing_variety,]$Freq
+    
+    # If less than 4 subgroup for this group, demanding higher contrast
+    if(n_color < 4 & n_color > 1 ){
+      colors_range=c(palette[2], palette[length(palette)])
+      new_colors=rev(colorRampPalette(colors_range)(n_color))
+      
+      change_color=cdf_colors_physeq[cdf_colors_physeq[[group_column]] == missing_variety ,]
+      change_color$hex = new_colors
+      
+      cdf_colors_physeq[cdf_colors_physeq[[group_column]] == missing_variety ,] = change_color
+    }
+  }
+  
+  
+  ##############################################################################
+  #order one type only 
+  if (ordering == "Paper"){ physeq1 <- subset_samples(physeq,origin != "Hybrid-KUniq") }
+  else {                    physeq1 <- subset_samples(physeq,origin == "Hybrid-KUniq") }
+
+  
+  mdf_prep1 <- prep_mdf(physeq1, subgroup_level = subgroup_lvl)
+
+  if(only_bacteria){
+    selected_groups=selected_groups[selected_groups != "Planctomycetota"]
+  }
+
+  # Create a color object for the specified data
+  colors_physeq1 <- create_color_dfs(mdf_prep1,
+                                     selected_groups = selected_groups,
+                                     top_n_subgroups = 4,
+                                     group_level = group_lvl,
+                                     subgroup_level = subgroup_lvl,
+                                     cvd = cvd)
+
+  # Extract
+  mdf_colors_physeq1 <- colors_physeq1$mdf
+  cdf_colors_physeq1 <- colors_physeq1$cdf
+
+  ids_order <- reorder_samples_by(mdf_colors_physeq1, cdf_colors_physeq1,
+                                  #sample_ordering = expanded_ids,
+                                  group_level = group_lvl ,subgroup_level = subgroup_lvl,
+                                  order_tax = selected_groups[1])$mdf
+  ids_order = levels(ids_order$Sample)
+
+  ids_order = str_remove_all(ids_order, "_Hybrid|_Paper")
+  expanded_ids <- paste0(rep(ids_order, each = 2), c("_Hybrid", ""))
+  ##############################################################################
+  
+  
+  color_objs_reorder_ab <- reorder_samples_by(mdf_colors_physeq, cdf_colors_physeq,
+                                              sample_ordering = expanded_ids,
+                                              group_level = group_lvl ,subgroup_level = subgroup_lvl,
+                                              order_tax = selected_groups[1])
+  
+  mdf_colors_physeq <- color_objs_reorder_ab$mdf
+  cdf_colors_physeq <- color_objs_reorder_ab$cdf
+  
+  if(nrow(final_colors) > 0) {cdf_colors_physeq = final_colors}
+  
+  legend_1 <- custom_legend(mdf_colors_physeq, cdf_colors_physeq,
+                            group_level = group_lvl ,subgroup_level = subgroup_lvl,                   
+                            x = "Sample",
+                            y = "Abundance",
+                            legend_key_size = .65, legend_text_size = 12, 
+                            legend_orientation = "vertical")
+  
+  
+  
+  plots <- lapply(unique(mdf_colors_physeq[[susbset_column]]), function(subj) {
+    df_sub <- subset(mdf_colors_physeq, get(susbset_column) == subj)
+    
+    plot_microshades(df_sub, cdf_colors_physeq,) +
+      ggtitle(subj) +
+      scale_y_continuous(labels = scales::percent, expand = expansion(0)) +
+      theme_linedraw() +
+      theme(
+        strip.background = element_rect(fill = "#333333", color = "black"), 
+        strip.text = element_text(size = 10, face = "bold", color = "white"),  # smaller
+        axis.text.x.bottom = element_text(size = 6, angle = 25, hjust = 1),   # smaller
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 8),       # smaller
+        legend.position = "none",
+        text = element_text(size = 6),                                         # smaller
+        axis.text.x = element_text(size = 4, angle = 90, hjust = 1)
+      ) + 
+      facet_grid(~subject_classification, scales = "free_x", space = "free_x")
+  })
+  
+  
+  p=cowplot::plot_grid(
+    plots[[1]] , NULL ,
+    plots[[2]] + theme(axis.text.y = element_blank() , axis.title.y = element_blank())
+    , legend_1 + theme(
+      legend.text = element_text(size = 8),      # smaller text
+      legend.title = element_text(size = 10),    # title text
+      legend.key.size = unit(0.5, "cm"),         # box size
+      legend.key.width = unit(0.5, "cm")
+    ),  nrow=1 , rel_widths = c(5, 0.15, 4 ,1.5)) 
+  
+  
+  return(list("final_plot"=p ,"plot_list"=plots, "legend" = legend_1 , "colors"=cdf_colors_physeq))
+}
+
+```
+
+# Merge 2 microshades figures
+
+```{r test_microshades-mergefig, echo=TRUE , eval=TRUE}
+
+### Plot on the bottom  = always Paper
+copy_classif_df=classif_df
+
+
+#df_long$.id = paste0(df_long$.id, "_Paper")
+copy_classif_df$.id = paste0(copy_classif_df$.id, "_Hybrid")
+
+
+classif_merged=rbind(copy_classif_df,df_long)
+classif_merged = classif_merged[str_detect(classif_merged$classification, fixed("Bacteria|")),]
+
+### Remove filters
+results=get_abundance_matrix(classif_merged, lvl , 1,  0 )
+full_table=results$classif_df
+abundance=results$abundance_matrix
+
+
+tmp=get_taxmat_phyloseq_from_OTU(classif_merged, lvl, full_table, "count")
+physeq_merged=tmp$physeq
+
+###
+sampledata_tpm=RunTable
+sampledata_hybrid=RunTable
+
+sampledata_tpm$Run = paste0(sampledata_tpm$Run, "")
+sampledata_hybrid$Run = paste0(sampledata_hybrid$Run, "_Hybrid")
+
+sampledata=rbind(sampledata_hybrid,sampledata_tpm)
+
+
+row.names(sampledata)=sampledata$Run
+sampledata$.id=sampledata$Run
+sampledata$Run=NULL
+sampledata$origin=ifelse(str_detect(sampledata$.id, "Hybrid"),
+                         "Hybrid-KUniq" , "Results from Nganou-Makamdop et al. Cell, 2021")
+sample_data(physeq_merged)=sampledata
+physeq_merged <- subset_samples(physeq_merged,origin %in%
+                                  c("Hybrid-KUniq","Results from Nganou-Makamdop et al. Cell, 2021"))
+
+# physeq=physeq_merged
+# subgroup_lvl = lvl
+# group_lvl = lvl_group
+# full_table_df = full_table
+# susbset_column = "origin"
+# ordering="Paper"
+# only_bacteria=TRUE
+# cvd=TRUE
+
+p=plot_with_microshades2(physeq_merged, subgroup_lvl = lvl,
+                      group_lvl = lvl_group,
+                      full_table_df = full_table, 
+                      susbset_column = "origin", 
+                      cvd=FALSE , only_bacteria = TRUE , 
+                      ordering = "Paper")
+plot_list = p$plot_list
+legend=p$legend
+color_legend=p$colors 
+
+cowplot=cowplot::plot_grid(
+    plot_list[[2]]+ theme(axis.text.x = element_text(colour = "white"),
+                          axis.title.x = element_blank()), 
+    NULL,
+    plot_list[[1]] + theme(axis.title.x = element_text(colour = "white")),
+    nrow=3, ncol = 1, #rel_widths = c(5,1.5) , 
+    #rel_heights = c(5,1,5))
+    rel_heights = c(5,-.6,5)) 
+
+
+cowplot2 = cowplot::plot_grid(
+  cowplot , legend , nrow=1, rel_widths = c(10,1.75) )
+
+
+
+# ggsave(cowplot2,
+#        filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/abundance_TPMvsHybrid-Paper-Ordered.jpeg"),
+#        device = "jpeg",width = 40, height = 26,dpi = 350 , units = "cm", create.dir = TRUE)
+
+p=plot_with_microshades2(physeq_merged, subgroup_lvl = lvl,
+                      group_lvl = lvl_group,
+                      full_table_df = full_table, 
+                      susbset_column = "origin", 
+                      cvd=TRUE , only_bacteria = TRUE , 
+                      ordering = "Hybrid")
+microshades_p = p$plot_list
+legend=p$legend
+
+cowplot=cowplot::plot_grid(
+    microshades_p[[2]]+ theme(
+      axis.text.x = element_text(colour = "white"),
+      axis.title.x = element_blank(),
+      strip.text = element_text(size=9, face="bold")) , 
+    NULL,
+    microshades_p[[1]] + theme(
+      axis.title.x = element_text(colour = "white"),
+      axis.text.x = element_text(size=0,colour = "white"),
+      axis.text.x.bottom=element_text(size=0,colour = "white"),
+      strip.text = element_text(size=9, face="bold")) ,  
+    
+    nrow=3, ncol = 1, #rel_widths = c(5,1.5) , 
+    rel_heights = c(5,-.6,5)) 
+
+final_cowplot2 = cowplot::plot_grid(
+  cowplot , legend +theme(
+  legend.text = element_text(size = 1)),
+  nrow=1, rel_widths = c(5,1.5) )
+
+
+
+final_cowplot2
+
+ggsave(final_cowplot2,
+       filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/abundance_TPMvsHybrid-Hybrid-Ordered-spadesKU.tiff"),
+       device = "tiff",compression = "lzw",
+       width = 20, height = 14.5,dpi = 600 , units = "cm", create.dir = TRUE)
+
+
+
+```
+
+## Differential Abundances
+
+### Only in proportion
+
+```{r plot_bacteriaset, echo=TRUE , eval=TRUE ,fig.width = 16, fig.height = 15,}
+
+lvl="G"
+abundance_matrix=get_abundance_matrix(classif_df, lvl , 1, 0 )$abundance
+
+
+abundance_long <- abundance_matrix %>%
+  pivot_longer(
+    cols = -classification,        # all columns except classification
+    names_to = "Run",           # new column for sample names
+    values_to = "freq"             # new column for sample values
+  )
+
+
+abundance_long = merge(abundance_long, RunTable, by="Run")
+
+wilcox_results=abundance_long %>%
+  group_by(classification) %>%
+  summarise(
+    p_value = wilcox.test(freq ~ subject_classification )$p.value,
+    stats = wilcox.test(freq ~ subject_classification )$statistic ,
+    mean = mean(freq) )
+
+### taxonomy
+taxo = as.data.frame(physeq@tax_table)
+
+wilcox_results=merge(wilcox_results, taxo[,c("K","P","G")] , by.x="classification",by.y="G")
+abundance_long=merge(abundance_long, taxo[,c("K","P","G")] , by.x="classification",by.y="G")
+
+
+Actino=c("Mycobacterium", "Kocuria", "Microbacterium")
+
+Bacillota=c("Lactococcus")
+
+Bacteroid=c("Hymenobacter," , "Sphingobacterium")
+
+Proteo=c("Xanthomonas" , "Serratia" , "Klebsiella","Achromobacter",
+         "Comamonas","Hydrogenophaga" , "Acidovorax", "Variovorax",
+         "Ramlibacter", "Delftia" , "Roseateles" , "Rhizobacter",
+         "Ribrivivax" , "Massilia" , "Burkholderia" ,"Ralstonia",
+         "Methylophilus" , "Sphingobium", "Novosphingobium",
+         "Ochrobacrum","Methylobacter","Brevundimonas","Rickettsia")
+
+Actino    <- paste0("g__", Actino)
+Bacillota <- paste0("g__", Bacillota)
+Bacteroid <- paste0("g__", Bacteroid)
+Proteo    <- paste0("g__", Proteo)
+
+paper_bacteria=c(Actino,Bacillota,Bacteroid, Proteo)
+
+wilcox_results$paper = ifelse(wilcox_results$classification %in% paper_bacteria, TRUE, FALSE) 
+#wilcox_results = wilcox_results[wilcox_results$K == "Bacteria" , ]
+
+paper_bacteria_significant=intersect(paper_bacteria , wilcox_results[wilcox_results$p_value <= 0.1,]$classification)
+paper_bacteria_significant = c(paper_bacteria_significant, Actino, Bacillota)
+
+
+
+
+
+library(ggpubr)
+
+box=ggboxplot( abundance_long[abundance_long$classification %in% paper_bacteria_significant,], 
+           x = "subject_classification", y = "freq",
+           #color = "subject_classification", 
+           palette = "Dark2" , fill ="subject_classification") +
+  stat_compare_means(method = "wilcox.test") + 
+  theme_linedraw(base_size = 10) +
+  scale_fill_brewer(palette = "Dark2",direction = -1) +
+  theme(legend.position = "none",
+        strip.background = element_rect(fill="#333333", color="black") , 
+        strip.text = element_text(size = 14, face = "bold",color="white"),
+        axis.title.y = element_blank(), axis.title.x= element_blank(),
+        axis.text.x=element_text(angle=0,size=10)) + 
+  ggh4x::facet_nested_wrap(~ P+classification, scales="free",ncol=4)
+
+
+# ggsave(box,
+#        filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/abundance_boxplots-actino-bacillo-pseudo-0.01.jpeg"),
+#        device = "jpeg",width = 40, height = 26,dpi = 350 , units = "cm", create.dir = TRUE)
+
+
+
+
+bacteria_significant=wilcox_results[wilcox_results$p_value <= 0.05 & wilcox_results$K=="Bacteria",]$classification
+
+
+
+
+# interesting_bact=c("g__Glutamicibacter","g__Hymenobacter","g__Lactococcus",
+#                    "g__Azospirillum","g__Burkholderia","g__Delftia","g__Massilia" , "g__Serratia")
+
+# Found by both:
+both=c("g__Lactococcus","g__Delftia", "g__Serratia") #, "g__Burkholderia")
+# Found by me / not them:
+me=c("g__Azospirillum" , "g__Weissella" , "g__Rhodoferax")
+# Found by them not me:
+them=c("g__Sphingobacterium" , "g__Mycobacterium") #, "g__Massilia")
+
+interesting_bact=c(both,me,them)
+
+abundance_long$label=ifelse(abundance_long$classification %in% paper_bacteria, 
+                            paste0(abundance_long$classification," *") , abundance_long$classification)
+
+
+
+box=ggplot( abundance_long[abundance_long$classification %in% interesting_bact,], 
+           aes(x = subject_classification, y = freq, fill =subject_classification)) +
+  fill_palette(palette=  c("#b55448","#708090" ))+
+  stat_compare_means( method = "wilcox.test",size = 5.25,fill="white")+
+  geom_boxplot(width=.5,alpha = .85, outlier.alpha = .5, outliers = FALSE)+
+  geom_jitter(width = .05, alpha = .25)+
+  theme_linedraw(base_size = 10) +
+  theme(legend.position = "bottom",
+        legend.title=element_blank(),
+        legend.text = element_text(size = 14),
+        legend.key.size = unit(1.25, 'cm'),
+        strip.background = element_rect(fill="#333333", color="black") , 
+        strip.text = element_text(size = 14, face = "bold",color="white"),
+        axis.title.y = element_blank(), 
+        axis.title.x= element_blank(),
+        axis.text.x=element_blank()) + 
+  ggh4x::facet_nested_wrap(~ P+label, scales="free",nrow=2)
+
+box
+ggsave(box,
+       filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/abundance_boxplots-significant.jpeg"),
+       device = "jpeg",width = 40, height = 26,dpi = 350 , units = "cm", create.dir = TRUE)
+
+phylum_color=color_legend[color_legend$Top_G %in% c("g__Delftia","g__Bacillus","g__Chryseobacterium","g__Cutibacterium"),]
+
+
+
+# Found by both:
+both=c("g__Lactococcus","g__Delftia", "g__Serratia") #, "g__Burkholderia")
+# Found by me / not them:
+me=c("g__Azospirillum" , "g__Weissella" , "g__Rhodoferax")
+# Found by them not me:
+them=c("g__Sphingobacterium" , "g__Mycobacterium") #, "g__Massilia")
+
+
+
+#vect_top=c("g__Glutamicibacter","g__Hymenobacter","g__Lactococcus")
+
+vect_top=c("g__Mycobacterium","g__Sphingobacterium", "g__Lactococcus", "g__Weissella"  )
+vect_bot=c("g__Azospirillum","g__Rhodoferax","g__Delftia","g__Serratia")
+
+abundance_long$subject_label= paste0(abundance_long$subject_classification, "     ")
+
+abundance_long = merge(abundance_long, wilcox_results[,c("classification","p_value")], by="classification")
+abundance_long$p_value_threshold = sprintf("%3.3f", abundance_long$p_value)
+
+abundance_long$p_value_label = ifelse(abundance_long$p_value <= 0.001, "Wilcoxon, p < 0.001", paste0("Wilcoxon, p = ",abundance_long$p_value_threshold) )
+
+abundance_max <- abundance_long %>%
+  group_by(classification) %>%
+  summarise(max_freq = max(freq, na.rm = TRUE))
+
+abundance_long=merge(abundance_long, abundance_max, by="classification")
+abundance_long$maxy=1.1*abundance_long$max_freq
+
+orderbot=c("g__Azospirillum","g__Rhodoferax","g__Delftia *","g__Serratia *")
+abundance_bot=abundance_long[abundance_long$label %in% orderbot , ]
+abundance_bot$label=factor(abundance_bot$label, levels =orderbot)
+
+
+
+
+boxbot=ggplot( abundance_bot, 
+               aes(x = subject_classification, y = freq, fill =subject_label)) +
+  fill_palette(palette=  rev(c("#f7bcbc", "#748293")))+
+  geom_text(aes(label=p_value_label, y = maxy),x=1.5, size=3)+
+  geom_boxplot(width=.5,alpha = .85, outlier.alpha = .5, outliers = FALSE)+
+  geom_jitter(width = .05, alpha = .25)+
+  theme_linedraw(base_size = 8) +
+  theme(legend.position = "bottom",
+        legend.title=element_blank(),
+        legend.text = element_text(size = 10),
+        legend.key.size = unit(1.25, 'cm'),
+        strip.background = element_rect(fill=phylum_color[phylum_color$Top_P=="Pseudomonadota",]$hex, color="black") , 
+        strip.text = element_text(size = 9, face = "bold",color="white"),
+        axis.title.y = element_blank(), 
+        axis.title.x= element_blank(),
+        axis.text.x=element_blank()) + 
+  ggh4x::facet_nested_wrap(~ P+label, scales="free",ncol=5)
+
+
+boxbot
+ggsave(boxbot,
+       filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/boxbot.jpeg"),
+       device = "jpeg",width = 20, height = 14.5/2,dpi = 350 , units = "cm", create.dir = TRUE)
+
+
+
+top_box=list()
+vect_top=c("g__Mycobacterium","g__Sphingobacterium", "g__Lactococcus")
+for(g in vect_top){
+  
+  p=unique(abundance_long[abundance_long$classification == g,]$P)
+  print(p)
+  print(g)
+  if(g == "g__Lactococcus"){
+    g=c("g__Lactococcus","g__Weissella") }
+    
+  print(g)
+
+
+  
+  ppp=ggplot( abundance_long[abundance_long$classification %in% g,], 
+              aes(x = subject_classification, y = freq, fill =subject_classification)) +
+    fill_palette(palette=  rev(c("#f7bcbc", "#748293")))+
+    geom_text(aes(label=p_value_label, y = maxy),x=1.5,size=3)+
+    # stat_compare_means(
+    #   method = "wilcox.test",
+    #   size = 5,
+    #   fill = "white",
+    #   vjust = .25,
+    #   label.x = 1.15,
+    #   aes(
+    #     label = ifelse(
+    #       as.numeric(..p..)<0.01,
+    #       "Wilcoxon, p < 0.01",
+    #       paste0("Wilcoxon, p = ", sprintf("%3.2f", as.numeric(..p..)))
+    #     )
+    #   )
+    # ) +
+    geom_boxplot(width=.5,alpha = .85, outlier.alpha = .5, outliers = FALSE)+
+    geom_jitter(width = .05, alpha = .25)+
+    theme_linedraw(base_size = 8) +
+    theme(legend.position = "none",
+          legend.title=element_blank(),
+          legend.text = element_text(size = 10),
+          legend.key.size = unit(1.25, 'cm'),
+          strip.background = element_rect(fill=phylum_color[phylum_color$Top_P==p,]$hex, color="black") , 
+          strip.text = element_text(size = 8.5, face = "bold",color="white"),
+          axis.title.y = element_blank(), 
+          axis.title.x= element_blank(),
+          axis.text.x=element_blank()) + 
+    ggh4x::facet_nested_wrap(~ P+label, scales="free",ncol=5)
+  ppp
+  top_box[[p]] = ppp  
+  
+}
+
+cowplot=cowplot::plot_grid(
+  top_box[[1]] , top_box[[2]] , top_box[[3]],
+    ncol=3, nrow = 1, rel_widths = c(.25,.25,.5) ) 
+
+box_full = cowplot::plot_grid(
+  cowplot , boxbot , nrow=2, rel_heights = c(.45,.55))
+
+ggsave(box_full,
+       filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/boxbot_full.jpeg"),
+       device = "jpeg",width = 20, height = 14.5,dpi = 600 , units = "cm", create.dir = TRUE)
+
+
+
+
+
+fig8 = cowplot::plot_grid(
+  cowplot2 , box_full , nrow=2, 
+  label_size = 18, labels = c("A", "B"),  
+  rel_heights = c(.5,.5))
+
+fig8
+
+ # ggsave(fig8,
+ #       filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/fig8.jpeg"),
+ #       device = "jpeg",width = 40, height = 48,dpi = 350 , units = "cm", create.dir = TRUE)
+
+
+ cowplot2 = cowplot::plot_grid(
+  cowplot , legend +theme(
+  legend.text = element_text(size = 8)),
+  nrow=1, rel_widths = c(2.5,1.75) )
+
+ 
+ 
+ 
+ cowplot=cowplot::plot_grid(
+    microshades_p[[2]]+ theme(
+      axis.text.x = element_text(colour = "white"),
+      axis.title.x = element_blank(),
+      strip.text = element_text(size=9, face="bold")) , 
+    NULL,
+    microshades_p[[1]] + theme(
+      axis.title.x = element_text(colour = "white"),
+      axis.text.x = element_text(size=0,colour = "white"),
+      axis.text.x.bottom=element_text(size=0,colour = "white"),
+      strip.text = element_text(size=9, face="bold")) ,  
+    
+    nrow=3, ncol = 1, #rel_widths = c(5,1.5) , 
+    rel_heights = c(5,-.6,5)) 
+
+final_cowplot2 = cowplot::plot_grid(
+  cowplot , legend +theme(
+  legend.text = element_text(size = 1)),
+  nrow=1, rel_widths = c(5,1.5) )
+
+ 
+box_full 
+
+
+
+fig8 = cowplot::plot_grid(
+  final_cowplot2 , box_full , nrow=2, 
+  label_size = 12, labels = c("A", "B"),  
+  rel_heights = c(.5,.5))
+
+size_factor= 1
+
+ ggsave(fig8,
+        filename=paste0(path,"results/Douek_Cleveland/Simulation/figures_review/fig8.tiff"),
+        device = "tiff",compression = "lzw",
+        width = 20*size_factor,
+        height = 29*size_factor,
+        dpi = 600,
+        units = "cm",
+        create.dir = TRUE)
+ 
+  
+
+```
+
+```{r plot_bacteriaset2, echo=FALSE , eval=FALSE}
+
+lvl="P"
+abundance_matrix=get_abundance_matrix(classif_df, lvl , n_patient*5, 0.001 )$abundance
+
+
+abundance_long <- abundance_matrix %>%
+  pivot_longer(
+    cols = -classification,        # all columns except classification
+    names_to = "Run",           # new column for sample names
+    values_to = "freq"             # new column for sample values
+  )
+
+
+abundance_long = merge(abundance_long, RunTable, by="Run")
+
+wilcox_results=abundance_long %>%
+  group_by(classification) %>%
+  summarise(
+    p_value = wilcox.test(freq ~ subject_classification )$p.value,
+    stats = wilcox.test(freq ~ subject_classification )$statistic )
+
+### taxonomy
+taxo = as.data.frame(physeq@tax_table)
+
+wilcox_results=merge(wilcox_results, taxo[,c("K","P","G")] , by.x="classification",by.y="G")
+abundance_long=merge(abundance_long, taxo[,c("K","P","G")] , by.x="classification",by.y="G")
+
+Actino=c("Mycobacterium", "Kocuria", "Microbacterium")
+
+Bacillota=c("Lactococcus")
+
+Bacteroid=c("Hymenobacter," , "Sphingobacterium")
+
+Proteo=c("Xanthomonas" , "Serratia" , "Klebsiella","Achromobacter",
+         "Comamonas","Hydrogenophaga" , "Acidovorax", "Variovorax",
+         "Ramlibacter", "Delftia" , "Roseateles" , "Rhizobacter",
+         "Ribrivivax" , "Massilia" , "Burkholderia" ,"Ralstonia",
+         "Methylophilus" , "Sphingobium", "Novosphingobium",
+         "Ochrobacrum","Methylobacter","Brevundimonas","Rickettsia")
+
+Actino    <- paste0("g__", Actino)
+Bacillota <- paste0("g__", Bacillota)
+Bacteroid <- paste0("g__", Bacteroid)
+Proteo    <- paste0("g__", Proteo)
+
+paper_bacteria=c(Actino,Bacillota,Bacteroid, Proteo)
+
+paper_bacteria_significant=intersect(paper_bacteria , wilcox_results[wilcox_results$p_value <= 0.1,]$classification)
+paper_bacteria_significant = c(paper_bacteria_significant, Actino, Bacillota)
+
+library(ggpubr)
+
+box=ggboxplot( abundance_long[abundance_long$classification %in% paper_bacteria_significant,], 
+           x = "subject_classification", y = "freq",
+           #color = "subject_classification", 
+           palette = "Dark2" , fill ="subject_classification") +
+  stat_compare_means(method = "wilcox.test") + 
+  theme_linedraw(base_size = 10) +
+  scale_fill_brewer(palette = "Dark2",direction = -1) +
+  theme(legend.position = "none",
+        strip.background = element_rect(fill="#333333", color="black") , 
+        strip.text = element_text(size = 14, face = "bold",color="white"),
+        axis.title.y = element_blank(), axis.title.x= element_blank(),
+        axis.text.x=element_text(angle=0,size=10)) + 
+  ggh4x::facet_nested_wrap(~ P+classification, scales="free",ncol=4)
+
+
+ggsave(box,
+       filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/abundance_boxplots-actino-bacillo-pseudo-0.01.jpeg"),
+       device = "jpeg",width = 40, height = 26,dpi = 350 , units = "cm", create.dir = TRUE)
+
+
+
+
+bacteria_significant=wilcox_results[wilcox_results$p_value <= 0.05 & wilcox_results$K=="Bacteria",]$classification
+
+interesting_bact=c("g__Glutamicibacter","g__Hymenobacter","g__Lactococcus",
+                   "g__Azospirillum","g__Burkholderia","g__Delftia","g__Massilia" , "g__Serratia")
+
+
+abundance_long$label=ifelse(abundance_long$classification %in% paper_bacteria, 
+                            paste0(abundance_long$classification," * ") , abundance_long$classification)
+
+
+box=ggboxplot( abundance_long[abundance_long$classification %in% interesting_bact,], 
+           x = "subject_classification", y = "freq", fill ="subject_classification") +
+  fill_palette(palette=  rev(c("#d07c15","#3b77a3" )))+
+  stat_compare_means(method = "wilcox.test",size=6) +
+  theme_linedraw(base_size = 10) +
+  theme(legend.position = "bottom",
+        legend.title=element_blank(),
+        legend.text = element_text(size = 14),
+        legend.key.size = unit(1.25, 'cm'),
+        strip.background = element_rect(fill="#333333", color="black") , 
+        strip.text = element_text(size = 14, face = "bold",color="white"),
+        axis.title.y = element_blank(), 
+        axis.title.x= element_blank(),
+        axis.text.x=element_blank()) + 
+  ggh4x::facet_nested_wrap(~ P+label, scales="free",ncol=4)
+
+
+ggsave(box,
+       filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/abundance_boxplots-significant.jpeg"),
+       device = "jpeg",width = 40, height = 26,dpi = 350 , units = "cm", create.dir = TRUE)
+
+```
