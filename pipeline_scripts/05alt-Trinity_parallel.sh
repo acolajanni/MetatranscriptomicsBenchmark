@@ -27,18 +27,7 @@ echo "#############################"
 ################################################################################
 
 module purge
-# module load sra-tools/2.11.0
-#module load trimmomatic/0.39
-#module load bowtie2/2.5.1
-#module load star/2.7.5a
-#module load samtools/1.15.1
-# module load bedtools/2.30.0 
 module load trinity/2.13.2
-# module load fastqc/0.11.9
-# module load multiqc/1.13
-# module load seqkit/2.1.0 
-# module load salmon/1.10.2
-
 module load python/3.9 
 module load use.own
 
