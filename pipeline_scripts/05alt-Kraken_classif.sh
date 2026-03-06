@@ -1,7 +1,7 @@
 #!/bin/bash
 #############################
 #SBATCH -J KU
-#SBATCH --array=0-49%5
+#SBATCH --array=0-54
 #############################
 
 echo "#############################" 
@@ -21,12 +21,12 @@ echo "#############################"
 # @ COLAJANNI Antonin
 ################################################################################
 
-PATH_unmapped="${1:-~/results/Douek_cell2021/Bowtie2_mapping_chm13/}"
-PATH_RES="${2:-~/results/Douek_cell2021/}"
+PATH_unmapped="${1:-~/data/Bowtie2_mapping_hg19/}"
+PATH_RES="${2:-~/results/}"
 SEQ_TYPE="${3:-PE}"
 ALGO="${4-Kuniq}"
 DB="${5-kuniq_microbialDB}"
-ID="${6:-~/data/Douek_cell2021/sra_subset_in_manuscript.txt}"
+ID="${6:-~/data/sra_subset_in_manuscript.txt}"
 compressed="${7:-FALSE}"
 extension="${8:-.fastq}"
 
