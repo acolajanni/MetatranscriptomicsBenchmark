@@ -1,4 +1,4 @@
-# Metatranscriptomic classification in the study of microbial translocation
+# Extracting microbial signal from host-dominated  metatranscriptomes
 
 Antonin COLAJANNI <sup>1,2</sup>, Raluca URICARU<sup>2</sup>, Rodolphe THIÉBAUT<sup>1</sup>, and Patricia THEBAULT<sup>2</sup> 
 
