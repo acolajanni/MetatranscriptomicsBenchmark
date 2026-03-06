@@ -2,8 +2,7 @@
 
 library(stringr)
 
-path = "/run/user/1001/gvfs/sftp:host=core.cluster.france-bioinformatique.fr,user=acolajanni~/"
-#path = "~/"
+path = "~/"
 
 path_data = file.path(path,"data/Douek_cell2021/")
 path_data_DNA = file.path(path,"data/Douek_cell2021_DNA/")
