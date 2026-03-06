@@ -27,8 +27,8 @@ module load bedtools/2.30.0
 module load seqkit/2.1.0 
 
 
-MAIN_PATH="${1:-~/data/Douek_Cleveland/}"
-ID="${2:-~/data/Douek_Cleveland/sra_listp2p1.txt}"
+MAIN_PATH="${1:-~/data/}"
+ID="${2:-~/data/sra_list_RNA.txt}"
 RANDOM_NAME="${3-full}"
 SEQ_TYPE="${4:-PE}"
 
