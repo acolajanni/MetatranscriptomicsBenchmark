@@ -38,15 +38,13 @@ mkdir -p ${OUTPUT_DIR}raw_reads/
 
 
 fastq-dump ${OUTPUT_DIR}${SRA_ID}/${SRA_ID}.sra --gzip --clip --skip-technical --split-files --split-spot --outdir $OUTPUT_DIR"raw_reads/" 
-
-# fasterq-dump ${OUTPUT_DIR}${SRA_ID}/${SRA_ID}.sra --skip-technical --outdir $OUTPUT_DIR"raw_reads/" --threads 8   # SRA file are named like SRA_id.sra / at the end we got fastq file
     
-# if [ $SEQ_TYPE = "PE" ] ; then 
-#     gzip ${OUTPUT_DIR}raw_reads/${SRA_ID}_2.fastq &
-#     gzip ${OUTPUT_DIR}raw_reads/${SRA_ID}_1.fastq
-# else
-#     gzip ${OUTPUT_DIR}raw_reads/${SRA_ID}.fastq
-# fi
+if [ $SEQ_TYPE = "PE" ] ; then 
+     gzip ${OUTPUT_DIR}raw_reads/${SRA_ID}_2.fastq &
+     gzip ${OUTPUT_DIR}raw_reads/${SRA_ID}_1.fastq
+else
+     gzip ${OUTPUT_DIR}raw_reads/${SRA_ID}.fastq
+fi
 
 echo " --- "
 
