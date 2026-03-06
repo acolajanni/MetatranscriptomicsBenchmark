@@ -16,9 +16,9 @@ module load sra-tools/2.11.0
 
 
 # First argument: path to data, if no argument go to douek_cell_2021
-OUTPUT_DIR="${1:-~/data/Douek_cell2021/}"
+OUTPUT_DIR="${1:-~/data/}"
 SEQ_TYPE="${2:-PE}"
-ID="${3:-~/data/Douek_cell2021/sra_subset_in_manuscript.txt}"
+ID="${3:-~/data/sra_subset_in_manuscript.txt}"
 
 
 declare -a SRA_IDs  
