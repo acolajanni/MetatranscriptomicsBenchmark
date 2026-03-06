@@ -21,7 +21,7 @@ echo "#############################"
 # @ COLAJANNI Antonin
 ################################################################################
 
-PATH_unmapped="${1:-~/data/Bowtie2_mapping_hg19/}"
+PATH_unmapped="${1:-~/data/STAR_mapping_hg19/}"
 PATH_RES="${2:-~/results/}"
 SEQ_TYPE="${3:-PE}"
 ALGO="${4-Kuniq}"
