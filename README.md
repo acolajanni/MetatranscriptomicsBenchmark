@@ -21,6 +21,8 @@ To leverage the complementarity of both approaches, we propose a hybrid pipeline
 Overall, our work provides a framework for extracting microbial signal from host-dominated human metatranscriptomes, enabling the reuse of existing transcriptomic datasets for microbiome-related analyses, including but not limited to microbial translocation studies.
 
 
+![fig1](figures/fig1.jpg)
+
 ## Github repository description
 
 MetatranscriptomicsBenchmark/
