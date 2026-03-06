@@ -10,7 +10,8 @@ Corresponding Author: antonin.colajanni@u-bordeaux.fr
 
 **Keywords**
 
-Metatranscriptomic, Metagenomic, Microbial translocation, Public data, Benchmark
+Metatranscriptomic, Metagenomics, Host-dominated metatranscriptomes, Microbial translocation
+
 
 **Abstract** 
 
