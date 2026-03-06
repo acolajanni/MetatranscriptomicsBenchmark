@@ -31,10 +31,10 @@ module load spades/4.2.0
 module load use.own
 
 
-PATH_RES="${1:-~/results/Douek_cell2021/}"
+PATH_RES="${1:-~/results/}"
 SEQ_TYPE="${2:-PE}"
-ID="${3:-~/data/Douek_cell2021/sra_subset_in_manuscript.txt}"
-PATH_unmapped="${4:-~/data/Douek_cell2021/Bowtie2_mapping_chm13/}"
+ID="${3:-~/data/sra_subset_in_manuscript.txt}"
+PATH_unmapped="${4:-~/data/STAR_mapping_hg19/}"
 compressed="${5:-FALSE}"
 extension="${6:-.fastq}"
 
