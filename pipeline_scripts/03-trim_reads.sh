@@ -28,10 +28,10 @@ echo "#############################"
 module load trimmomatic/0.39
 
 
-PATH_RES="${1:-~/data/Douek_cell2021/}"
+PATH_RES="${1:-~/data/}"
 SEQ_TYPE="${2:-PE}"
 RAW_extension="${3:-}"
-ID="${4:-~/data/Douek_cell2021/sra_subset_in_manuscript.txt}"
+ID="${4:-~/data/sra_list_RNA.txt}"
 adapter_path="${5:-~/data/TruSeq3-PE.fa}" 
 INPUT_FOLDERNAME="${6:-raw_reads}"
 
