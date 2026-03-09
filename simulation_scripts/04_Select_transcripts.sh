@@ -10,14 +10,14 @@ module load seqkit
 
 
 
-PATH_DATA="${1:-~//data/Simulation/with_replacement/}"
+PATH_DATA="${1:-~/data/Simulation/with_replacement/}"
 n_transcript="${2:-200}"
 replicate="${3:-10}"
 PROJECT_NAME="${4:-with_replacement}"
 ONLY_HUMAN="${5:-FALSE}"
 
-MAIN_PATH=~//
-SCRIPT_DIR=${MAIN_PATH}fastq_scripts/Simulation/
+MAIN_PATH=~/
+SCRIPT_DIR=${MAIN_PATH}pipeline_scripts/Simulation/
 cd $SCRIPT_DIR
 
 

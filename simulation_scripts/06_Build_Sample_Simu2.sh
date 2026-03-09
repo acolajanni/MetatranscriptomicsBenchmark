@@ -47,7 +47,7 @@ contains() {
 }
 
 
-PATH_MAIN=~//
+PATH_MAIN=~/
 
 # Retrieve conditions through config file "condition_list.tsv" and other variables
 index_row=$(( SLURM_ARRAY_TASK_ID + 1))

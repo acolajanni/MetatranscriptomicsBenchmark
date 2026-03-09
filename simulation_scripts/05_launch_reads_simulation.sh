@@ -30,7 +30,7 @@ cd $PATH_MAIN
 echo ${PATH_DATA}transcripts/${SLURM_ARRAY_TASK_ID}/
 
 Rscript --no-save --no-restore \
-    ${PATH_MAIN}fastq_scripts/Simulation/05bis_Simulate_reads_v2.r \
+        ~/simulation_scripts/05bis_Simulate_reads.r \
         ${PATH_DATA} \
         $transcript_dir \
         ${n_transcript} \

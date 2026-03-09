@@ -10,19 +10,19 @@ module load seqkit
 
 
 
-PATH_DATA="${1:-~//data/Simulation/realist/}"
+PATH_DATA="${1:-~/data/Simulation/realist/}"
 PROJECT_NAME="${2:-realist}"
 ONLY_HUMAN="${3:-FALSE}"
 
 
-MAIN_PATH=~//
+MAIN_PATH=~/
 SCRIPT_DIR=${MAIN_PATH}fastq_scripts/Simulation/
 cd $SCRIPT_DIR
 
 PATH_DATABASE=${MAIN_PATH}database_clean/transcript_database/realist/${SLURM_ARRAY_TASK_ID}/dedup_transcripts_ID/
 
 ##### 1: Create R scripts to select the transcripts (Build simulated metagenome)
-Rscript --no-save --no-restore ${SCRIPT_DIR}realist/00_Build_simulated_metagenome_realist.r 
+Rscript --no-save --no-restore ${SCRIPT_DIR}realist/04bis_Build_simulated_metagenome_realist.r
 
 
 ##### 2: take transcripts ID and extracting them into separate fasta file

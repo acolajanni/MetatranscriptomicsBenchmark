@@ -10,10 +10,10 @@ module load r/4.2.3
 
 
 
-PATH_DATA="${1:-~//data/Simulation/realist/}"
+PATH_DATA="${1:-~/data/Simulation/realist/}"
 n_transcript="${2:-200}"
 read_per_transcript="${3:-100}"
-transcript_dir="${4:-~//data/Simulation/realist/transcripts/}"
+transcript_dir="${4:-~/data/Simulation/realist/transcripts/}"
 array="${5:-TRUE}"
 
 
@@ -22,13 +22,13 @@ if [[ "$array" == "TRUE" ]] ; then
 fi
 
 
-PATH_MAIN=~//
+PATH_MAIN=~/
 cd $PATH_MAIN
 
 echo ${PATH_DATA}transcripts/${SLURM_ARRAY_TASK_ID}/
 
 Rscript --no-save --no-restore \
-    ${PATH_MAIN}fastq_scripts/Simulation/realist/01_Simulate_reads_realist.r \
+        ~/simulation_scripts/realist/05bis_Simulate_reads_realist.r \
         $SLURM_ARRAY_TASK_ID \
         ${PATH_MAIN}outputFile_${sra_id}.Rout 2>&1
 

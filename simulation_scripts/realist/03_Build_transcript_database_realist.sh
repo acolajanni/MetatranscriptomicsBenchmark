@@ -8,7 +8,7 @@
 module purge
 module load seqkit
 
-PATH_MAIN=~//
+PATH_MAIN=~/
 PATH_DATABASE=${PATH_MAIN}database_clean/
 SEQUENCE_DATABASE=${PATH_DATABASE}sequences/
 
@@ -65,7 +65,7 @@ for i in ${!genomeID_array[@]} ; do
 done
 
 
-# seqkit replace --threads 10 -p '(.+)' -r taxid:9606'_${1}' ~//database/Grch38p14/GCF_000001405.40_GRCh38.p14_rna_from_genomic.fna.gz \
+# seqkit replace --threads 10 -p '(.+)' -r taxid:9606'_${1}' ~/database/Grch38p14/GCF_000001405.40_GRCh38.p14_rna_from_genomic.fna.gz \
 #     | sed '/^>/s/^>\([^ ]*\) .*/>\1 /' \
 #     | sed  's/lcl|//g' \
 #     | sed 's/ *$//g' > ${PATH_TRANSCRIPT_DATABASE}Homo_sapiens_rna_transcripts.fasta

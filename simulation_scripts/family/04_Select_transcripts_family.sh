@@ -10,7 +10,7 @@ module load seqkit
 
 
 
-PATH_DATA="${1:-~//data/Simulation/family/}"
+PATH_DATA="${1:-~/data/Simulation/family/}"
 n_transcript="${2:-10}"
 replicate="${3:-10}"
 PROJECT_NAME="${4:-family}"
@@ -21,8 +21,8 @@ folder="${6:-/}"
 ### PROJECT_NAME sert à rien ?
 
 
-MAIN_PATH=~//
-SCRIPT_DIR=${MAIN_PATH}fastq_scripts/Simulation/
+MAIN_PATH=~/
+SCRIPT_DIR=${MAIN_PATH}pipeline_scripts/Simulation/
 cd $SCRIPT_DIR
 
 PATH_DATABASE=${MAIN_PATH}database_clean/transcript_database/${folder}/${SLURM_ARRAY_TASK_ID}/dedup_transcripts_ID/
@@ -45,7 +45,7 @@ fi
 
 
 ##### 1: Create R scripts to select the transcripts (Build simulated metagenome)
-Rscript --no-save --no-restore ${SCRIPT_DIR}00_Build_simulated_metagenome_v3.r \
+Rscript --no-save --no-restore ${SCRIPT_DIR}04bis_Build_simulated_metagenome.r \
     $n_transcript $replicate $SLURM_ARRAY_TASK_ID \
     Simulation/${PROJECT_NAME}/ TRUE ${ONLY_HUMAN} $folder $all_transcripts
 

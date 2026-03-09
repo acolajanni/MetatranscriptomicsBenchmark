@@ -47,7 +47,7 @@ for folder in $(cat $ID) ;do
 done
 
 
-SCRIPT_DIR=~/fastq_scripts/
+SCRIPT_DIR=~/pipeline_scripts/
 
 
 cd $PATH_RES

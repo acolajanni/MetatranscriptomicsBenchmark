@@ -12,8 +12,7 @@ setwd(path)
 args = commandArgs(trailingOnly=TRUE)
 rep = args[1]
 folder= args[2]
-rep=0
-folder="/realist/"
+
 ### Get parameters
 
 

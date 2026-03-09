@@ -33,7 +33,7 @@ RANDOM_NAME="${3-full}"
 SEQ_TYPE="${4:-PE}"
 
 
-SCRIPT_DIR=~/fastq_scripts/
+SCRIPT_DIR=~/pipeline_scripts/
 
 cd $MAIN_PATH
 

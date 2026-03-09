@@ -135,7 +135,7 @@ for srr in ${SRA_IDs[@]:$index_iter:$n_operation} ; do
     ##########################
 
     # Get complete taxnomy from Taxon ID ## (ONLY ! No filtering at this step)
-    python ~/fastq_scripts/Blast_utils/06_2-Get_classification_from_query.py \
+    python ~/pipeline_scripts/Blast_utils/06_2-Get_classification_from_query.py \
        --dir ${path_to_contigs}${sra_id}/ \
        --FileName ${sra_id}_Blast_query_VRC_no_comment.txt \
        --QueryType blast \
@@ -157,7 +157,7 @@ for srr in ${SRA_IDs[@]:$index_iter:$n_operation} ; do
 
     ## Assess a unique taxon to each contig ##
     Rscript --no-save --no-restore \
-        ~/fastq_scripts/Blast_utils/06_3-Filter_reads.r ${sra_id} ${path_to_contigs} \
+        ~/pipeline_scripts/Blast_utils/06_3-Filter_reads.r ${sra_id} ${path_to_contigs} \
         ~/outputFile_${sra_id}.Rout 2>&1
 
 

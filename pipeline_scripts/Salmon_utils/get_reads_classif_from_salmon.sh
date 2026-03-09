@@ -6,7 +6,6 @@ SRA_ID="${2:-A5}"
 
 PATH_RESULTS=${PATH_RES}${SRA_ID}/
 
-#path_results=/home/acolajanni/Documents/work/fastq_scripts/test_salmon_toreadsclassif/
 
 
 TAXONOMY=( strain species genus family order class phylum superkingdom )
@@ -50,7 +49,7 @@ printf "%s\n" "${different_lowest_lvl[@]}" > ${PATH_RESULTS}Quantification/tax_l
 # @2: IDentifiant
 # @3: taxonomic lvl
 # @4: Files with contig ID
-# bash ~/fastq_scripts/Salmon_utils/retrieveReadsFromContigs.sh \
+# bash ~/pipeline_scripts/Salmon_utils/retrieveReadsFromContigs.sh \
 #     $PATH_RES $SRA_ID strain $SRA_ID ${PATH_RESULTS}Quantification/contig_ID_strain.txt
 
 
@@ -83,7 +82,7 @@ if [[ ${#different_lowest_lvl[@]} -ge 2 ]] ; then
         # @2: IDentifiant
         # @3: taxonomic lvl
         # @4: Files with contig ID
-        bash ~/fastq_scripts/Salmon_utils/retrieveReadsFromContigs.sh \
+        bash ~/pipeline_scripts/Salmon_utils/retrieveReadsFromContigs.sh \
             $PATH_RES $SRA_ID $next_lvl ${PATH_RESULTS}Quantification/contig_ID_diff_$next_lvl.txt
 
 
@@ -106,8 +105,8 @@ cat ${PATH_RESULTS}ContigsToReads/*_readsToContigs.txt \
 # @1: path to results (~results/dataset/Contigs/ID_XXX/)
 # @2: IDentifiant
 # @3: taxonomic lvl
-bash ~/fastq_scripts/Salmon_utils/retrieveReadsFromContigs.sh \
+bash ~/pipeline_scripts/Salmon_utils/retrieveReadsFromContigs.sh \
     $PATH_RES $SRA_ID unclassified $SRA_ID 
     
-bash ~/fastq_scripts/Salmon_utils/retrieveReadsFromContigs.sh \
+bash ~/pipeline_scripts/Salmon_utils/retrieveReadsFromContigs.sh \
     $PATH_RES $SRA_ID human $SRA_ID
