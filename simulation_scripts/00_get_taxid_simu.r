@@ -1,10 +1,11 @@
 library(stringr)
 library(dplyr)
 
-db_path="/home/acolajanni/Documents/work/database/"
-db_path="/shared/projects/microbiome_translocation/"
+db_path="~/"
 
 
+refseq <- read.delim("https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/assembly_summary_refseq.txt", comment.char = "#", header = TRUE)
+# or directly
 refseq=read.delim(paste0(db_path,"database_clean/assembly_summary_refseq.txt"), 
                   fill = TRUE, as.is = TRUE, skip=1, quote="")
 
