@@ -25,17 +25,22 @@ Overall, our work provides a framework for extracting microbial signal from host
 
 ## Github repository description
 
+```
 MetatranscriptomicsBenchmark/
 │
 ├── pipeline_scripts/
 ├── figure_scripts/
+├── simulation_scripts/
 ├── data/
 ├── database_clean/
 └── README.md
+```
 
 The directory `./pipeline_scripts/` contains the scripts necessary to run the pipelines described in our analysis.
 
 The directory `./figure_scripts/` contains the ressources that were used for the real data analysis: the SRR ids of the samples and the corresponding metadata
+
+The directory `./simulation_scripts/` contains the ressources that were used to create the simulated datasets
 
 The directory `./data/` contains the scripts that were used to produce the figures.
 
