@@ -8,24 +8,24 @@
 ################################################################################
 
 
-PATH_RES="${1:-/shared/projects/microbiome_translocation/data/}"
+PATH_RES="${1:-~/data/}"
 SEQ_TYPE="${2:-PE}"
-ID="${3:-/shared/projects/microbiome_translocation/data/sra_list_RNA.txt}"
+ID="${3:-~/data/sra_list_RNA.txt}"
 GENOME_input="${4:-hg19}"
-PATH_INPUT="${5:-/shared/projects/microbiome_translocation/data/Bowtie2_mapping/}"
+PATH_INPUT="${5:-~/data/Bowtie2_mapping/}"
 GENOMIC_MAT="${6-RNA}"
 Index="${7:hg38}"
 
-PATH_DATA=/shared/projects/microbiome_translocation/data/
+PATH_DATA=~/data/
 
 
 
 if [ $Index = "hg38" ] ; then 
-    STAR_index=/shared/projects/microbiome_translocation/database/homo_sapiens/GRCh38.p14/star-2.7.11a
+    STAR_index=~/database/homo_sapiens/GRCh38.p14/star-2.7.11a
 elif [ $Index = "chm13" ] ; then 
-    STAR_index=/shared/projects/microbiome_translocation/database/homo_sapiens/T2T-CHM13v2.0/star-2.7.11a
+    STAR_index=~/database/homo_sapiens/T2T-CHM13v2.0/star-2.7.11a
 elif [ $Index = "hg19" ] ; then 
-    STAR_index=/shared/projects/microbiome_translocation/database/homo_sapiens/GRCh37.p13/star-2.7.11a
+    STAR_index=~/database/homo_sapiens/GRCh37.p13/star-2.7.11a
 fi
 
 echo $STAR_index
@@ -181,102 +181,9 @@ for SRA_ID in $ID_list ; do
 
 
 
-
-
-
-
-    # else 
-    #     echo - Single-end -
-    #     # map single-end reads to genome
-    #     STAR --runThreadN 20 \
-    #         --readFilesIn ${PATH_INPUT}/${SRA_ID}/${SRA_ID}${FileNamePrefix_in}".fastq" \
-    #         --genomeDir $STAR_index \
-    #         --outSAMtype BAM SortedByCoordinate \
-    #         --outFileNamePrefix ${SRA_ID}${FileNamePrefix_out}_mapping_ \
-    #         --outReadsUnmapped Fastx \
-    #         --outSAMstrandField intronMotif 1>star_stdout.txt 2>star_stderr.txt # strand derived from the intron motif. Reads with inconsistent and/or non-canonical introns are filtered out.
-
-    #     FileNamePrefix=_STAR_
-
-    #     mv ${SRA_ID}${FileNamePrefix_out}_mapping_Unmapped.out.mate1 ${SRA_ID}${FileNamePrefix}unmapped.fastq 
-    #     gzip --force -c ${SRA_ID}${FileNamePrefix}unmapped.fastq > ${SRA_ID}${FileNamePrefix}unmapped.fastq.gz
-
-    # fi
-    # echo " --- "
-
-
 done
 
 echo "----------------------------------"
 echo " STAR - END "
 
 
-#############################################################################################################################
-# Build Genome Index / Not needed
-
-
-#mkdir -p $PATH_DATA"HG38_STAR/"
-#mkdir -p $PATH_GENECODE"index_files/"
-#PATH_GENECODE=$(echo $PATH_DATA"HG38_STAR/")
-
-#cd $PATH_GENECODE
-
-#wget http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/latest_release/GRCh38.primary_assembly.genome.fa.gz
-#wget http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/latest_release/gencode.v44.primary_assembly.annotation.gtf.gz
-#gzip -d *.gz
-
-#GENOME=GRCh38.primary_assembly.genome.fa
-#GTF=gencode.v44.primary_assembly.annotation.gtf
-
-
-## Files available in databank 
-
-# for genomeSAindexNbases :  log2(GenomeLength)/2 - 1) human:3.4Gbases ==> 14.85
-#STAR --runThreadN 20 --runMode genomeGenerate  \
-#    --genomeSAindexNbases 15 \
-#    --genomeDir $PATH_GENECODE \
-#    --genomeFastaFiles ${GENOME} \
-#    --sjdbOverhang 150 \
-#    --sjdbGTFfile ${GTF} \
-#    --outFileNamePrefix ${PATH_GENECODE}"index_files/Human_genome"
-
-
-#############################################################################################################################
-#############################################################################################################################
-#### map previously unmapped paired-end reads to genome (old)
-#STAR --runThreadN 20 \
-#    --readFilesIn ${PATH_RES}Bowtie2_mapping/${SRA_ID}/${SRA_ID}${FileNamePrefix_in}"_1.fastq" ${PATH_RES}Bowtie2_mapping/${SRA_ID}/${SRA_ID}${FileNamePrefix_in}"_2.fastq" \
-#    --genomeDir $STAR_index \
-#    --outSAMtype BAM SortedByCoordinate \
-#    --outFileNamePrefix ${SRA_ID}${FileNamePrefix_out}_mapping_ \
-#    --outSAMunmapped Within
-
-#############################################################################################################################
-# Reads Quality check (FASTQC + MultiQC)
-
-#PATH_MAIN=/shared/projects/microbiome_translocation/
-#PATH_RES=$(echo $PATH_MAIN"results/")
-#PATH_DATA=$(echo $PATH_MAIN"data/"Mapped_reads)
-
-#cd $PATH_RES
-#fastqc ${PATH_DATA}/*/*_Pre_ART_PlasmaAligned.sortedByCoord.out.bam --format bam --outdir ${PATH_RES} 
-#multiqc ${PATH_RES}/*/*_Pre_ART_PlasmaAligned.sortedByCoord* -n "Pre_ART_Plasma"
-
-
-
-
-
-############################################################################################################################# (old)
-
-# Retrive BAM parts for unaligned reads (old)
-#samtools view -u  -f 4 -F 264 ${SRA_ID}${FileNamePrefix}Aligned.sortedByCoord.out.bam  > tmps1.bam  # Unmapped reads whose mate is mapped
-#samtools view -u -f 8 -F 260 ${SRA_ID}${FileNamePrefix}Aligned.sortedByCoord.out.bam  > tmps2.bam   # mapped reads whose mate is unmapped
-#samtools view -u -f 12 -F 256 ${SRA_ID}${FileNamePrefix}Aligned.sortedByCoord.out.bam > tmps3.bam   # Both reads of the pair are unmapped
-#samtools merge -u - tmps[123].bam | samtools sort -n -o unmapped.bam
-
-
-
-# BAM ==> fastq
-#bamToFastq -i unmapped.bam \
-#    -fq ${SRA_ID}${FileNamePrefix_out}_unmapped_1.fastq \
-#    -fq2 ${SRA_ID}${FileNamePrefix_out}_unmapped_2.fastq

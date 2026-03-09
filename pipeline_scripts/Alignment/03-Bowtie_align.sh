@@ -19,11 +19,11 @@ echo "SLURM_JOB_NODELIST:" $SLURM_JOB_NODELIST
 echo "#############################" 
 
 
-PATH_RES="${1:-/shared/projects/microbiome_translocation/data/}"
+PATH_RES="${1:-~/data/}"
 SEQ_TYPE="${2:-PE}"
-ID="${3:-/shared/projects/microbiome_translocation/data/sra_list_RNA.txt}"
+ID="${3:-~/data/sra_list_RNA.txt}"
 GENOME="${4:-hg38}"
-PATH_INPUT="${5:-/shared/projects/microbiome_translocation/data/Trimmed_reads/}"
+PATH_INPUT="${5:-~/data/Trimmed_reads/}"
 all_reads_in_one_folder="${6:-TRUE}"
 output_if_empty="${7:-FALSE}"
 compressed="${8:-TRUE}"
@@ -33,7 +33,7 @@ module load samtools/1.15.1
 module load bowtie2/2.5.1
 module load bedtools/2.30.0 
 
-PATH_DATA=/shared/projects/microbiome_translocation/data/
+PATH_DATA=~/data/
 #PATH_RES=$(echo $PATH_DATA"Douek_cell2021/")
 
 #############################################################################################################################
@@ -43,17 +43,17 @@ FOLDERS=${PATH_RES}${ID}*/
 
 if [ $GENOME = "hg38" ] ; then 
     #Bowtie_index=/shared/bank/homo_sapiens/GRCh38.p14/latest_ensembl/indexes/bowtie2-2.5.1
-    Bowtie_index=/shared/projects/microbiome_translocation/database/homo_sapiens/GRCh38.p14/bowtie2-2.5.1/GRCh38.p14
+    Bowtie_index=~/database/homo_sapiens/GRCh38.p14/bowtie2-2.5.1/GRCh38.p14
     FileNamePrefix=Bowtie2_hg38
 
 elif [ $GENOME = "hg19" ] ; then 
     Bowtie_index=/shared/bank/homo_sapiens/hg19/bowtie2/hg19
-    Bowtie_index=/shared/projects/microbiome_translocation/database/homo_sapiens/GRCh37.p13/bowtie2-2.5.1/GRCh37.p13
+    Bowtie_index=~/database/homo_sapiens/GRCh37.p13/bowtie2-2.5.1/GRCh37.p13
 
     FileNamePrefix=Bowtie2_hg19
 
 elif [ $GENOME = "chm13" ] ; then 
-    Bowtie_index=/shared/projects/microbiome_translocation/database/homo_sapiens/T2T-CHM13v2.0/bowtie2-2.5.1/T2T-CHM13v2.0
+    Bowtie_index=~/database/homo_sapiens/T2T-CHM13v2.0/bowtie2-2.5.1/T2T-CHM13v2.0
     FileNamePrefix=Bowtie2_CHM13
 fi
 
@@ -186,38 +186,6 @@ for SRA_ID in $ID_list ; do
         samtools fasta -f 4 contigs_${FileNamePrefix}_mapping.bam > trinity_unmapped.Trinity.fasta
     fi
 
-    # else 
-
-    #     echo - Single-end -
-    #     cd $PATH_RES"Bowtie2_mapping/"
-
-    #     GSM=$(echo $PATH_RES"Trimmed_reads/GSM*")
-    #     for merged_reads in $GSM ; do
-
-    #         path_to_read="${merged_reads%/}"             # strip trailing slash (if any)
-    #         GSM_ID="${path_to_read##*/}"                 # remove everything before the last '/'
-    #         GSM_ID="${GSM_ID%%.*}"                        # Remove everything after the point(s) (doing it twice)
-
-    #         echo $GSM_ID
-    #         mkdir -p $(echo $PATH_RES"Bowtie2_mapping/$GSM_ID") 
-    #         cd $PATH_RES"Bowtie2_mapping/"$GSM_ID
-
-    #         bowtie2 -p 20 -x $Bowtie_index \
-    #             -U ${merged_reads} | samtools view -bS - >  ${GSM_ID}_Bowtie2_mapping.bam
-
-    #         gzip $merged_reads
-
-    #         # Retrive BAM parts for unaligned reads 
-    #         samtools view -u  -f 4 ${GSM_ID}_Bowtie2_mapping.bam  > unmapped.bam  # Unmapped reads 
-
-
-    #         bamToFastq -i unmapped.bam \
-    #             -fq ${GSM_ID}_${FileNamePrefix}_unmapped.fastq 
-
-    #     done
-    #     # Break the loop of SRA_id 
-    #     break
-
 
     echo " --- "
 
@@ -228,14 +196,3 @@ echo "----------------------------------"
 echo " BOWTIE2 - END "
 
 
-
-
-
-            # Retrive BAM parts for unaligned reads  (not used anymore)
-            #samtools view -u  -f 4 -F 264 ${SRA_ID}_Bowtie2_mapping.bam  > tmps1.bam  # Unmapped reads whose mate is mapped
-            #samtools view -u -f 8 -F 260 ${SRA_ID}_Bowtie2_mapping.bam  > tmps2.bam   # mapped reads whose mate is unmapped
-            #samtools view -u -f 12 -F 256 ${SRA_ID}_Bowtie2_mapping.bam > tmps3.bam   # Both reads of the pair are unmapped
-            #samtools merge -u - tmps[123].bam | samtools sort -n -o unmapped.bam
-
-        # @: threads / -b ==> outputs .bam rather than  (smaller files)
-        #samtools view -b -@ 20 -f 4 ${SRA_ID}_${FileNamePrefix}_mapping.bam > unmapped_${FileNamePrefix}.bam

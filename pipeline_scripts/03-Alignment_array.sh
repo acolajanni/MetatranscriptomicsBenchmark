@@ -75,7 +75,7 @@ echo "----------------"
 # @6: logical: if all the reads are in the same folder or FALSE if reads in ../SRR.../read
 # @7: logical: if nothing align returns input reads 
 # @8: logical: if input reads are compressed or not
-bash ./Alignement/04-Bowtie_align.sh \
+bash ./Alignement/03-Bowtie_align.sh \
    ${MAIN_PATH} \
    $SEQ_TYPE $id hg38 \
    ${MAIN_PATH}/Trimmed_reads/ \
@@ -89,7 +89,7 @@ bash ./Alignement/04-Bowtie_align.sh \
 # @5: Path of input reads
 # @6: Genomic mat : RNA/DNA
 # @7: index to map with (hg38, chm13, ...)
-bash ./Alignement/04bis-STAR_align.sh \
+bash ./Alignement/03bis-STAR_align.sh \
    ${MAIN_PATH} \
    $SEQ_TYPE $id hg38 \
    ${MAIN_PATH}Bowtie2_mapping_hg38/ \
@@ -101,13 +101,13 @@ echo CHM13
 echo "----------------"
 
 ################################### BOWTIE2 + STAR (CHM13/T2T) ON TRIMMED READS ###################################
-bash ./Alignement/04-Bowtie_align.sh \
+bash ./Alignement/03-Bowtie_align.sh \
    ${MAIN_PATH} \
    $SEQ_TYPE $id chm13 \
    ${MAIN_PATH}STAR_mapping_hg38/ \
    FALSE FALSE FALSE
 
-bash ./Alignement/04bis-STAR_align.sh \
+bash ./Alignement/03bis-STAR_align.sh \
    ${MAIN_PATH} \
    $SEQ_TYPE $id chm13 \
    ${MAIN_PATH}Bowtie2_mapping_chm13/ \
@@ -121,13 +121,13 @@ echo GRCh37
 echo "----------------"
 ##################################BOWTIE2 + STAR (hg19) ON TRIMMED READS ###################################
 
-bash ./Alignement/04-Bowtie_align.sh \
+bash ./Alignement/03-Bowtie_align.sh \
    ${MAIN_PATH} \
    $SEQ_TYPE $id hg19 \
    ${MAIN_PATH}STAR_mapping_chm13/ \
    FALSE FALSE FALSE
 
-bash ./Alignement/04bis-STAR_align.sh \
+bash ./Alignement/03bis-STAR_align.sh \
    ${MAIN_PATH} \
    $SEQ_TYPE $id hg19 \
    ${MAIN_PATH}Bowtie2_mapping_hg19/ \
