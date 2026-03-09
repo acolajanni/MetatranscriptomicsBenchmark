@@ -254,3 +254,58 @@ Output of this step:
 - CLassification at read level for each strategies in  `~/results/hybrid/${method_name}/sampleID/ReadsClassif.txt` 
 
 
+
+## Simulation scripts
+
+To repreduce the simulated datasets follow the instructions: 
+
+For the evaluation of sequencing depth: 
+
+```bash
+PATH_DATA=~/data/Simulation/with_replacement/
+TRANSCRIPT_DIR=~/data/Simulation/with_replacement/transcripts/
+
+Rscript ./simulation_scripts/01_select_genomes.r
+
+sbatch ./simulation_scripts/02_download_transcriptome.sh
+
+sbatch ./simulation_scripts/03_Build_transcript_database.sh
+
+sbatch ./simulation_scripts/04_Select_transcripts.sh
+
+### For 5 reads per transcripts
+sbatch ./simulation_scripts/05_launch_reads_simulation.sh $PATH_DATA 200 5 $TRANSCRIPT_DIR
+
+### For 10 reads per transcripts
+sbatch ./simulation_scripts/05_launch_reads_simulation.sh $PATH_DATA 200 10 $TRANSCRIPT_DIR
+
+### For 100 reads per transcripts
+sbatch ./simulation_scripts/05_launch_reads_simulation.sh $PATH_DATA 200 100 $TRANSCRIPT_DIR
+
+
+sbatch ./simulation_scripts/06_Build_Sample_Simu1.sh
+```
+
+
+For the evaluation of the impact of human genome: 
+
+```bash
+
+
+```
+
+
+For the evaluation of classification performances at various taxonomic level
+
+```bash
+
+
+```
+
+
+For the realistic simulation dataset 
+
+```bash
+
+
+```
