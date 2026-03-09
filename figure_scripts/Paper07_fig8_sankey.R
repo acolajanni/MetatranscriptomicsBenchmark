@@ -333,7 +333,7 @@ cols_to_replace=colnames(merged_df)[-1]
 
 
 
-load(file = paste0("~/results/Douek_Cleveland/color_dict_fig6.rdata"))
+load(file = paste0("~/results/color_dict_fig6.rdata"))
 
 names(color_dict)=str_replace(names(color_dict), "-", ' - ')
 setdiff(names(color_dict), unique(rename_taxa$final_name))
@@ -361,7 +361,7 @@ tax=names(color_dict)
 #   color_dict[["Viruses - Incertae sedis"]]=color2
 # }
 
-#load("~/results/Douek_Cleveland/color_dict_25-05-25.RData")
+#load("~/results/color_dict_25-05-25.RData")
 
 tax_order=c(
   "Homo sapiens","Unassembled","Unclassified",

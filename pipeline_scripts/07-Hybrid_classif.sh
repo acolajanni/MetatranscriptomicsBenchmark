@@ -5,10 +5,10 @@
 #SBATCH --array=0-49
 #############################
 
-MAIN_PATH="${1:-~/results/Douek_Cleveland/}"
-CLASSIF_1="${2:-~/results/Douek_Cleveland/Contigs/}"
-CLASSIF_2="${3:-~/results/Douek_Cleveland/kraken/microbialDB/kuniq/}"
-ID="${4:-~/data/Douek_Cleveland/sra_list_RNA.txt}"
+MAIN_PATH="${1:-~/results/}"
+CLASSIF_1="${2:-~/results/Contigs/}"
+CLASSIF_2="${3:-~/results/kraken/microbialDB/kuniq/}"
+ID="${4:-~/data/sra_list_RNA.txt}"
 method_name="${5:-hybrid_Blast-kuniq}"
 
 

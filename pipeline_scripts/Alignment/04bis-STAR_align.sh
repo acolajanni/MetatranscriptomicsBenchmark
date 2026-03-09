@@ -8,11 +8,11 @@
 ################################################################################
 
 
-PATH_RES="${1:-/shared/projects/microbiome_translocation/data/Douek_cell2021/}"
+PATH_RES="${1:-/shared/projects/microbiome_translocation/data/}"
 SEQ_TYPE="${2:-PE}"
-ID="${3:-/shared/projects/microbiome_translocation/data/Douek_cell2021/sra_subset_in_manuscript.txt}"
+ID="${3:-/shared/projects/microbiome_translocation/data/sra_list_RNA.txt}"
 GENOME_input="${4:-hg19}"
-PATH_INPUT="${5:-/shared/projects/microbiome_translocation/data/Douek_cell2021/Bowtie2_mapping/}"
+PATH_INPUT="${5:-/shared/projects/microbiome_translocation/data/Bowtie2_mapping/}"
 GENOMIC_MAT="${6-RNA}"
 Index="${7:hg38}"
 
@@ -255,8 +255,8 @@ echo " STAR - END "
 # Reads Quality check (FASTQC + MultiQC)
 
 #PATH_MAIN=/shared/projects/microbiome_translocation/
-#PATH_RES=$(echo $PATH_MAIN"results/Douek_cell2021/")
-#PATH_DATA=$(echo $PATH_MAIN"data/Douek_cell2021/"Mapped_reads)
+#PATH_RES=$(echo $PATH_MAIN"results/")
+#PATH_DATA=$(echo $PATH_MAIN"data/"Mapped_reads)
 
 #cd $PATH_RES
 #fastqc ${PATH_DATA}/*/*_Pre_ART_PlasmaAligned.sortedByCoord.out.bam --format bam --outdir ${PATH_RES} 

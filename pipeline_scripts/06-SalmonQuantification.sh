@@ -25,10 +25,10 @@ echo "#############################"
 
 #############################
 
-PATH_RES="${1:-~/results/Douek_cell2021/Contigs/}"
-PATH_DATA="${2:-~/data/Douek_cell2021/STAR_mapping/}"
+PATH_RES="${1:-~/results/Contigs/}"
+PATH_DATA="${2:-~/data/STAR_mapping/}"
 SEQ_TYPE="${3:-PE}"
-ID="${4:-~/data/Douek_cell2021/sra_subset_in_manuscript.txt}"
+ID="${4:-~/data/sra_list_RNA.txt}"
 compressed="${5:-FALSE}"
 extension="${6:-.fastq}"
 data_type="${7:-Simulated}"

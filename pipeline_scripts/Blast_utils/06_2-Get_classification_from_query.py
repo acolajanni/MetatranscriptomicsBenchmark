@@ -350,10 +350,10 @@ args=parser.parse_args()
 os.chdir(args.dir)
 
 
-#dir_path = r'~/data/Douek_cell2021/Contigs/SRR**/*_Blast_query.txt'
+#dir_path = r'~/data/Contigs/SRR**/*_Blast_query.txt'
 #path = "~/"
 
-#dir_path = r'/run/user/1001/gvfs/sftp:host=core.cluster.france-bioinformatique.fr,user=acolajanni~/data/Douek_cell2021/Contigs/SRR**/*_Blast_query.txt'
+#dir_path = r'/run/user/1001/gvfs/sftp:host=core.cluster.france-bioinformatique.fr,user=acolajanni~/data/Contigs/SRR**/*_Blast_query.txt'
 #path = "/run/user/1001/gvfs/sftp:host=core.cluster.france-bioinformatique.fr,user=acolajanni~/"
 
 
@@ -406,7 +406,7 @@ if args.QueryType == "blast":
         
         
         
-#dir_path = r'~/results/Douek_cell2021/SRR**/*_kaiju.out'
+#dir_path = r'~/results/SRR**/*_kaiju.out'
 #path = "~/"
 
 elif args.QueryType == "kaiju":

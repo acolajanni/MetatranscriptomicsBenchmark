@@ -33,7 +33,7 @@ module load use.own
 
 PATH_RES="${1:-~/results/}"
 SEQ_TYPE="${2:-PE}"
-ID="${3:-~/data/sra_subset_in_manuscript.txt}"
+ID="${3:-~/data/sra_list_RNA.txt}"
 PATH_unmapped="${4:-~/data/STAR_mapping_hg19/}"
 compressed="${5:-FALSE}"
 extension="${6:-.fastq}"

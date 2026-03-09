@@ -26,7 +26,7 @@ PATH_RES="${2:-~/results/}"
 SEQ_TYPE="${3:-PE}"
 ALGO="${4-Kuniq}"
 DB="${5-kuniq_microbialDB}"
-ID="${6:-~/data/sra_subset_in_manuscript.txt}"
+ID="${6:-~/data/sra_list_RNA.txt}"
 compressed="${7:-FALSE}"
 extension="${8:-.fastq}"
 

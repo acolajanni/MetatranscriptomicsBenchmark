@@ -862,7 +862,7 @@ ggsave(fig6,
 
 
 
-save(color_dict,file = paste0("~/results/Douek_Cleveland/color_dict_fig6.rdata"))
+save(color_dict,file = paste0("~/results/color_dict_fig6.rdata"))
 
 
 p=ggplot(classif_smaller, aes(x=.id, y=Freq, fill = final_name) ) +
@@ -980,9 +980,9 @@ theme_fig6(p2)
 counting2=aggregate(NumReads ~ Method+.id ,classif_red, sum)
 counting3=aggregate(NumReads ~ Method ,counting2, mean)
 
-ggsave(p1,filename=paste0("~/results/Douek_Cleveland/figures/distribution_proportion_Cleveland.png"),
+ggsave(p1,filename=paste0("~/results/figures/distribution_proportion_Cleveland.png"),
        device = "png",width = 48, height = 27, units = "cm", create.dir = TRUE)
-ggsave(p2,filename=paste0("~/results/Douek_Cleveland/figures/distribution_total_Cleveland.png"),
+ggsave(p2,filename=paste0("~/results/figures/distribution_total_Cleveland.png"),
        device = "png",width = 48, height = 27, units = "cm")
 
 

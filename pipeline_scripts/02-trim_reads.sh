@@ -35,7 +35,7 @@ ID="${4:-~/data/sra_list_RNA.txt}"
 adapter_path="${5:-~/data/TruSeq3-PE.fa}" 
 INPUT_FOLDERNAME="${6:-raw_reads}"
 
-#PATH_RES=~/data/Douek_cell2021/TEST_RAM/
+#PATH_RES=~/data/TEST_RAM/
 #FOLDERS=${PATH_RES}/${ID}*/
 
 DATA_DIR=~/data/

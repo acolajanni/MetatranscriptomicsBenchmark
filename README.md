@@ -63,7 +63,7 @@ Output of this step:
 These files serve as the input for the downstream preprocessing and classification workflows.
 
 ```bash
-sbatch ./pipeline_scripts/02-get_SRA_file.sh
+sbatch ./pipeline_scripts/01-get_SRA_file.sh
 ```
 
 ---
@@ -88,8 +88,8 @@ These filtered reads are used for both assembly-based and assembly-free analyses
 
 
 ```bash
-sbatch ./pipeline_scripts/03-trim_reads.sh
-sbatch ./pipeline_scripts/04-Alignment_array.sh
+sbatch ./pipeline_scripts/02-trim_reads.sh
+sbatch ./pipeline_scripts/03-Alignment_array.sh
 ```
 
 ---
@@ -111,10 +111,10 @@ Filtered reads → Kraken classification → taxonomic profiles
 
 ```bash
 # For KrakenUniq
-sbatch ./pipeline_scripts/05alt-Kraken_classif.sh ~/data/STAR_mapping_hg19/ ~/results/ PE kuniq $microbialDB ~/data/sra_list_RNA.txt
+sbatch ./pipeline_scripts/04alt-Kraken_classif.sh ~/data/STAR_mapping_hg19/ ~/results/ PE kuniq $microbialDB ~/data/sra_list_RNA.txt
 
 # For Kraken2
-sbatch ./pipeline_scripts/05alt-Kraken_classif.sh ~/data/STAR_mapping_hg19/ ~/results/ PE kraken2 $k2_nt ~/data/sra_list_RNA.txt
+sbatch ./pipeline_scripts/04alt-Kraken_classif.sh ~/data/STAR_mapping_hg19/ ~/results/ PE kraken2 $k2_nt ~/data/sra_list_RNA.txt
 ```
 
 Output of this step:
@@ -153,10 +153,10 @@ This strategy allows read-level classification based on assembled sequences
 
 ```bash
 # For Trinity
-sbatch ./pipeline_scripts/05alt-Trinity_parallel.sh ~/data/ ~/results/ PE ~/data/sra_list_RNA.txt ~/data/STAR_mapping_hg19/
+sbatch ./pipeline_scripts/04alt-Trinity_parallel.sh ~/data/ ~/results/ PE ~/data/sra_list_RNA.txt ~/data/STAR_mapping_hg19/
 
 # For SPAdes
-sbatch ./pipeline_scripts/05-Spades_assembly.sh ~/results/ PE ~/data/sra_list_RNA.txt ~/data/STAR_mapping_hg19/
+sbatch ./pipeline_scripts/04-Spades_assembly.sh ~/results/ PE ~/data/sra_list_RNA.txt ~/data/STAR_mapping_hg19/
 ```
 
 ##### 2) Map contigs against hg38, retrieve unmapped contigs 
@@ -175,20 +175,20 @@ sbatch ~/pipeline_scripts/Alignment/04-Bowtie_align.sh ~/results/Contigs_rnaSpad
 
 ```bash
 # For Trinity
-sbatch ./pipeline_scripts/06-BLAST_request.sh ~/results/Contigs/ ~/data/sra_list_RNA.txt TRUE FALSE trinity
+sbatch ./pipeline_scripts/05-BLAST_request.sh ~/results/Contigs/ ~/data/sra_list_RNA.txt TRUE FALSE trinity
 
 # For SPAdes
-sbatch ./pipeline_scripts/06-BLAST_request.sh ~/results/Contigs_rnaSpades/ ~/data/sra_list_RNA.txt TRUE FALSE rnaSpades
+sbatch ./pipeline_scripts/05-BLAST_request.sh ~/results/Contigs_rnaSpades/ ~/data/sra_list_RNA.txt TRUE FALSE rnaSpades
 ```
 
 ##### 4) Retrieve Reads classif from contig annotation
 
 ```bash
 # For Trinity
-sbatch ./pipeline_scripts/07-SalmonQuantification.sh ~/results/Contigs/ ~/data/STAR_mapping_hg19/ PE ~/data/sra_list_RNA.txt FALSE .fastq SRR trinity
+sbatch ./pipeline_scripts/06-SalmonQuantification.sh ~/results/Contigs/ ~/data/STAR_mapping_hg19/ PE ~/data/sra_list_RNA.txt FALSE .fastq SRR trinity
 #
  For SPAdes
-sbatch ./pipeline_scripts/07-SalmonQuantification.sh ~/results/Contigs/ ~/data/STAR_mapping_hg19/ PE ~/data/sra_list_RNA.txt FALSE .fastq SRR rnaSpades
+sbatch ./pipeline_scripts/06-SalmonQuantification.sh ~/results/Contigs/ ~/data/STAR_mapping_hg19/ PE ~/data/sra_list_RNA.txt FALSE .fastq SRR rnaSpades
 ```
 
 Output of this step:
@@ -241,7 +241,7 @@ method_name=hybrid_${name1}-${name2}
 
 
 
-sbatch ./pipeline_scripts/08-Hybrid_classif.sh $RESULTS_PATH $classif_path1 $classif_path2 ~/data/sra_list_RNA.txt $method_name
+sbatch ./pipeline_scripts/07-Hybrid_classif.sh $RESULTS_PATH $classif_path1 $classif_path2 ~/data/sra_list_RNA.txt $method_name
 
 ```
 

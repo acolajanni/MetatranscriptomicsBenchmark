@@ -19,11 +19,11 @@ echo "SLURM_JOB_NODELIST:" $SLURM_JOB_NODELIST
 echo "#############################" 
 
 
-PATH_RES="${1:-/shared/projects/microbiome_translocation/data/Douek_cell2021/}"
+PATH_RES="${1:-/shared/projects/microbiome_translocation/data/}"
 SEQ_TYPE="${2:-PE}"
-ID="${3:-/shared/projects/microbiome_translocation/data/Douek_cell2021/sra_subset_in_manuscript.txt}"
+ID="${3:-/shared/projects/microbiome_translocation/data/sra_list_RNA.txt}"
 GENOME="${4:-hg38}"
-PATH_INPUT="${5:-/shared/projects/microbiome_translocation/data/Douek_cell2021/Trimmed_reads/}"
+PATH_INPUT="${5:-/shared/projects/microbiome_translocation/data/Trimmed_reads/}"
 all_reads_in_one_folder="${6:-TRUE}"
 output_if_empty="${7:-FALSE}"
 compressed="${8:-TRUE}"

@@ -749,8 +749,8 @@ RunTable$cd4_ratio=RunTable$cd4_count/RunTable$cd8_count
 ranks=c("superkingdom","phylum", "class", "order", "family", "genus")
 #
 
-#ku_hybrid_dir=paste0(path,"results/Douek_Cleveland/hybrid/hybrid_Blast-kuniq/")
-ku_hybrid_dir=paste0(path,"results/Douek_Cleveland/hybrid/hybrid_spadesBlast-kuniq/")
+#ku_hybrid_dir=paste0(path,"results/hybrid/hybrid_Blast-kuniq/")
+ku_hybrid_dir=paste0(path,"results/hybrid/hybrid_spadesBlast-kuniq/")
 
 
 
@@ -814,7 +814,7 @@ p=plot_with_microshades(physeq, subgroup_lvl = lvl,
 p
 
 
-# ggsave(p,filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/abundance.jpeg"),
+# ggsave(p,filename=paste0(path,"results/fig_microbiota/abundance.jpeg"),
 #        device = "jpeg",width = 40, height = 26,dpi = 350 , units = "cm", create.dir = TRUE)
 
 
@@ -830,8 +830,8 @@ lvl="G"
 lvl_group="P"
 
 
-paper_results = paste0(path,"/data/Douek_Cleveland/GSE172557_Cleveland_PathSeq_TPM.xlsx")
-genus_paper= paste0(path,"/data/Douek_Cleveland/TPM_Genus_2025.txt")
+paper_results = paste0(path,"/data/GSE172557_Cleveland_PathSeq_TPM.xlsx")
+genus_paper= paste0(path,"/data/TPM_Genus_2025.txt")
 data <- readxl::read_excel(path = paper_results)
 genus_TPM <- read.delim( genus_paper)
 
@@ -888,7 +888,7 @@ p=plot_with_microshades(physeq, subgroup_lvl = lvl,
 p
 
 # 
-# ggsave(p,filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/abundance_from_TPM.jpeg"),
+# ggsave(p,filename=paste0(path,"results/fig_microbiota/abundance_from_TPM.jpeg"),
 #        device = "jpeg",width = 40, height = 26,dpi = 350 , units = "cm", create.dir = TRUE)
 
 
@@ -1326,7 +1326,7 @@ cowplot2 = cowplot::plot_grid(
 
 
 # ggsave(cowplot2,
-#        filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/abundance_TPMvsHybrid-Paper-Ordered.jpeg"),
+#        filename=paste0(path,"results/fig_microbiota/abundance_TPMvsHybrid-Paper-Ordered.jpeg"),
 #        device = "jpeg",width = 40, height = 26,dpi = 350 , units = "cm", create.dir = TRUE)
 
 p=plot_with_microshades2(physeq_merged, subgroup_lvl = lvl,
@@ -1363,7 +1363,7 @@ final_cowplot2 = cowplot::plot_grid(
 final_cowplot2
 
 ggsave(final_cowplot2,
-       filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/abundance_TPMvsHybrid-Hybrid-Ordered-spadesKU.tiff"),
+       filename=paste0(path,"results/fig_microbiota/abundance_TPMvsHybrid-Hybrid-Ordered-spadesKU.tiff"),
        device = "tiff",compression = "lzw",
        width = 20, height = 14.5,dpi = 600 , units = "cm", create.dir = TRUE)
 
@@ -1453,7 +1453,7 @@ box=ggboxplot( abundance_long[abundance_long$classification %in% paper_bacteria_
 
 
 # ggsave(box,
-#        filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/abundance_boxplots-actino-bacillo-pseudo-0.01.jpeg"),
+#        filename=paste0(path,"results/fig_microbiota/abundance_boxplots-actino-bacillo-pseudo-0.01.jpeg"),
 #        device = "jpeg",width = 40, height = 26,dpi = 350 , units = "cm", create.dir = TRUE)
 
 
@@ -1501,7 +1501,7 @@ box=ggplot( abundance_long[abundance_long$classification %in% interesting_bact,]
 
 box
 ggsave(box,
-       filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/abundance_boxplots-significant.jpeg"),
+       filename=paste0(path,"results/fig_microbiota/abundance_boxplots-significant.jpeg"),
        device = "jpeg",width = 40, height = 26,dpi = 350 , units = "cm", create.dir = TRUE)
 
 phylum_color=color_legend[color_legend$Top_G %in% c("g__Delftia","g__Bacillus","g__Chryseobacterium","g__Cutibacterium"),]
@@ -1564,7 +1564,7 @@ boxbot=ggplot( abundance_bot,
 
 boxbot
 ggsave(boxbot,
-       filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/boxbot.jpeg"),
+       filename=paste0(path,"results/fig_microbiota/boxbot.jpeg"),
        device = "jpeg",width = 20, height = 14.5/2,dpi = 350 , units = "cm", create.dir = TRUE)
 
 
@@ -1627,7 +1627,7 @@ box_full = cowplot::plot_grid(
   cowplot , boxbot , nrow=2, rel_heights = c(.45,.55))
 
 ggsave(box_full,
-       filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/boxbot_full.jpeg"),
+       filename=paste0(path,"results/fig_microbiota/boxbot_full.jpeg"),
        device = "jpeg",width = 20, height = 14.5,dpi = 600 , units = "cm", create.dir = TRUE)
 
 
@@ -1642,7 +1642,7 @@ fig8 = cowplot::plot_grid(
 fig8
 
  # ggsave(fig8,
- #       filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/fig8.jpeg"),
+ #       filename=paste0(path,"results/fig_microbiota/fig8.jpeg"),
  #       device = "jpeg",width = 40, height = 48,dpi = 350 , units = "cm", create.dir = TRUE)
 
 
@@ -1687,7 +1687,7 @@ fig8 = cowplot::plot_grid(
 size_factor= 1
 
  ggsave(fig8,
-        filename=paste0(path,"results/Douek_Cleveland/Simulation/figures_review/fig8.tiff"),
+        filename=paste0(path,"results/Simulation/figures_review/fig8.tiff"),
         device = "tiff",compression = "lzw",
         width = 20*size_factor,
         height = 29*size_factor,
@@ -1768,7 +1768,7 @@ box=ggboxplot( abundance_long[abundance_long$classification %in% paper_bacteria_
 
 
 ggsave(box,
-       filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/abundance_boxplots-actino-bacillo-pseudo-0.01.jpeg"),
+       filename=paste0(path,"results/fig_microbiota/abundance_boxplots-actino-bacillo-pseudo-0.01.jpeg"),
        device = "jpeg",width = 40, height = 26,dpi = 350 , units = "cm", create.dir = TRUE)
 
 
@@ -1802,7 +1802,7 @@ box=ggboxplot( abundance_long[abundance_long$classification %in% interesting_bac
 
 
 ggsave(box,
-       filename=paste0(path,"results/Douek_Cleveland/fig_microbiota/abundance_boxplots-significant.jpeg"),
+       filename=paste0(path,"results/fig_microbiota/abundance_boxplots-significant.jpeg"),
        device = "jpeg",width = 40, height = 26,dpi = 350 , units = "cm", create.dir = TRUE)
 
 ```

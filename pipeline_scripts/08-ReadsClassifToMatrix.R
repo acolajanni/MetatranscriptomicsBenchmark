@@ -32,8 +32,8 @@ remove_human        =   as.logical(args[8])
 # remove_human=FALSE
 
 
-# result_dir=paste0(path,"results/Douek_Cleveland/Contigs_rnaSpades/")
-# sra_list=paste0(path,"data/Douek_Cleveland/sra_list_RNA.txt")
+# result_dir=paste0(path,"results/Contigs_rnaSpades/")
+# sra_list=paste0(path,"data/sra_list_RNA.txt")
 # lowest_rank = "genus"
 # threads = 23
 # use_cleanifier = FALSE

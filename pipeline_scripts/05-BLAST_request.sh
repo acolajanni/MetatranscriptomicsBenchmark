@@ -24,8 +24,8 @@ module load python/3.9
 module load seqkit/2.1.0 
 module load use.own
 
-path_to_contigs="${1:-~/results/Douek_cell2021/Contigs/}"
-ID="${2:-~/data/Douek_cell2021/sra_subset_in_manuscript.txt}"
+path_to_contigs="${1:-~/results/Contigs/}"
+ID="${2:-~/data/sra_list_RNA.txt}"
 use_unmapped_contigs="${3:-FALSE}"
 restart_Blast="${4:-FALSE}"
 contigs_type="${5:-trinity}"

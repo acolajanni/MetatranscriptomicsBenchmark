@@ -100,7 +100,7 @@ result_dir = args[2]
 #result_dir = file.path(path, "results/Douek_Montreal/DNA/Contigs/")
 # SRA_id="SRR14419357"
 #setwd(path)
-#SRA_in_manuscript = readLines(file.path(data_dir, "sra_subset_in_manuscript.txt"))
+#SRA_in_manuscript = readLines(file.path(data_dir, "sra_list_RNA.txt"))
 
 time=Sys.time()
 print(c("Load packages - ", as.character(time)))

@@ -32,11 +32,11 @@ module load python/3.9
 module load use.own
 
 
-PATH_DATA="${1:-~/data/Douek_cell2021/}"
-PATH_RES="${2:-~/results/Douek_cell2021/}"
+PATH_DATA="${1:-~/data/}"
+PATH_RES="${2:-~/results/}"
 SEQ_TYPE="${3:-PE}"
-ID="${4:-~/data/Douek_cell2021/sra_subset_in_manuscript.txt}"
-PATH_unmapped="${5:-~/data/Douek_cell2021/Bowtie2_mapping_chm13/}"
+ID="${4:-~/data/sra_list_RNA.txt}"
+PATH_unmapped="${5:-~/data/Bowtie2_mapping_chm13/}"
 compressed="${6:-FALSE}"
 extension="${7:-.fastq}"
 
