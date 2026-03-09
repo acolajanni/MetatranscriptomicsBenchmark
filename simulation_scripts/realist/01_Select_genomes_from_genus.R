@@ -1,15 +1,18 @@
 library(stringr)
 library(dplyr)
 
-db_path="/home/acolajanni/Documents/work/database/"
-db_path="~//"
+db_path="~/"
 
 
+
+refseq <- read.delim("https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/assembly_summary_refseq.txt", comment.char = "#", header = TRUE)
+# or directly
 refseq=read.delim(paste0(db_path,"database_clean/assembly_summary_refseq.txt"), 
                   fill = TRUE, as.is = TRUE, skip=1, quote="")
 
 refseq_lineage=read.delim(paste0(db_path,"database_clean/refseq_summary_lineage.tsv"),
                           col.names = c("taxid","taxon_full_name0","taxon_full_name"))
+
 
 refseq_lineage$taxon_full_name0 = NULL
 
@@ -54,10 +57,6 @@ refseq_selected_sequences=unique(refseq_selected_sequences)
 ### For species with multiple genome representation, take only complete genomes
 g_selected=as.data.frame(table(refseq_selected_sequences$G))
 
-# duplicated_sp=sp_selected[sp_selected$Freq > 1,]$Var1
-# duplicated=sp_selected[sp_selected$Freq > 1,]
-# single_sp=sp_selected[sp_selected$Freq <= 1,]$Var1
-# single=sp_selected[sp_selected$Freq == 1,]
 
 
 refseq_selected_sequences$Full_id=sapply(refseq_selected_sequences$ftp_path, function(x){
@@ -96,8 +95,8 @@ for (i in c(0:(n_replicate-1))) {
   random_drawing[[ toString(i) ]] = rep
 }
 
-save(random_drawing, file = "~//database_clean/selected_genomes/realist/selected_genomes_list.RData")
-load(file = "~//database_clean/selected_genomes/realist/selected_genomes_list.RData")
+save(random_drawing, file = "~/database_clean/selected_genomes/realist/selected_genomes_list.RData")
+#load(file = "~//database_clean/selected_genomes/realist/selected_genomes_list.RData")
 
 
 #### Save each dataframe 
