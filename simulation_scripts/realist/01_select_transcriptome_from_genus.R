@@ -2,7 +2,7 @@ library(stringr)
 library(dplyr)
 
 db_path="/home/acolajanni/Documents/work/database/"
-db_path="/shared/projects/microbiome_translocation/"
+db_path="~//"
 
 
 refseq=read.delim(paste0(db_path,"database_clean/assembly_summary_refseq.txt"), 
@@ -30,7 +30,7 @@ refseq_full = refseq_full %>% filter(annotation_date <= "2024/04/11")
 
 ################################################################################
 
-realist_simu_path="/shared/projects/microbiome_translocation/data/Simulation/realist/"
+realist_simu_path="~//data/Simulation/realist/"
 
 genus_to_select=read.table(paste0(realist_simu_path, "genus_to_select_lineage.txt"), sep="\t",
                            col.names = c("G", "taxid_g","K","P","C","O","F"))
@@ -96,14 +96,14 @@ for (i in c(0:(n_replicate-1))) {
   random_drawing[[ toString(i) ]] = rep
 }
 
-save(random_drawing, file = "/shared/projects/microbiome_translocation/database_clean/selected_genomes/realist/selected_genomes_list.RData")
-load(file = "/shared/projects/microbiome_translocation/database_clean/selected_genomes/realist/selected_genomes_list.RData")
+save(random_drawing, file = "~//database_clean/selected_genomes/realist/selected_genomes_list.RData")
+load(file = "~//database_clean/selected_genomes/realist/selected_genomes_list.RData")
 
 
 #### Save each dataframe 
 
 
-dir_to_save = "/shared/projects/microbiome_translocation/database_clean/selected_genomes/realist/"
+dir_to_save = "~//database_clean/selected_genomes/realist/"
 n_replicate=50
 for (i in c(0:(n_replicate-1))){
   print(i)

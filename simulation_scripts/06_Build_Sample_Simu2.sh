@@ -10,8 +10,8 @@ module load seqkit
 module load r/4.2.3
 
 
-condition_list="${1:-/shared/projects/microbiome_translocation/data/Simulation/condition_list.tsv}"
-PATH_DATA="${2:-/shared/projects/microbiome_translocation/data/Simulation/with_replacement/}"
+condition_list="${1:-~/data/Simulation/with_replacement/condition_list_Simu2.tsv}"
+PATH_DATA="${2:-~/data/Simulation/with_replacement/}"
 suffix_reads="${3:-raw}"
 restrict_group="${4:-None}"
 
@@ -47,7 +47,7 @@ contains() {
 }
 
 
-PATH_MAIN=/shared/projects/microbiome_translocation/
+PATH_MAIN=~//
 
 # Retrieve conditions through config file "condition_list.tsv" and other variables
 index_row=$(( SLURM_ARRAY_TASK_ID + 1))

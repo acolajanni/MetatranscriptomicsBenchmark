@@ -10,12 +10,12 @@ module load seqkit
 
 
 
-PATH_DATA="${1:-/shared/projects/microbiome_translocation/data/Simulation/realist/}"
+PATH_DATA="${1:-~//data/Simulation/realist/}"
 PROJECT_NAME="${2:-realist}"
 ONLY_HUMAN="${3:-FALSE}"
 
 
-MAIN_PATH=/shared/projects/microbiome_translocation/
+MAIN_PATH=~//
 SCRIPT_DIR=${MAIN_PATH}fastq_scripts/Simulation/
 cd $SCRIPT_DIR
 

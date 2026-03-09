@@ -24,7 +24,7 @@ simulate_reads_per_cell_stochastic <- function(counts_matrix, reads_per_transcri
 }
 
 
-path="/shared/projects/microbiome_translocation/data/Simulation/realist/"
+path="~//data/Simulation/realist/"
 
 set.seed(123)
 
@@ -160,7 +160,7 @@ counts_sim_df = counts_sim_df[,colSums(counts_sim_df) > 0]
 reads_per_transcript <- 100
 transcripts_sim <- simulate_reads_per_cell_stochastic(counts_sim_df, 100)
 
-save_dir="/shared/projects/microbiome_translocation/database_clean/selected_genomes/realist/"
+save_dir="~//database_clean/selected_genomes/realist/"
 
 # write.table(transcripts_sim, paste0(save_dir,"transcript_to_draw.tsv"), quote=FALSE, sep="\t", row.names=FALSE)
 

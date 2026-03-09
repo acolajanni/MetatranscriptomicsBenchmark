@@ -10,12 +10,12 @@ module load seqkit
 module load r/4.2.3
 
 
-PATH_DATA="${1:-/shared/projects/microbiome_translocation/data/Simulation/realist/}"
+PATH_DATA="${1:-~//data/Simulation/realist/}"
 
 read_per_transcript="100"
 
 
-PATH_MAIN=/shared/projects/microbiome_translocation/
+PATH_MAIN=~//
 
 
 replicate_ID=$(( SLURM_ARRAY_TASK_ID))

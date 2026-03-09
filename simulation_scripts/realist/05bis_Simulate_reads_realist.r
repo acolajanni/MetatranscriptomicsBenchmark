@@ -8,7 +8,7 @@ library(doParallel)
 args = commandArgs(trailingOnly=TRUE)
 
 
-path = "/shared/projects/microbiome_translocation/"
+path = "~//"
 # path='/home/acolajanni/Documents/work/'
 
 setwd(path)
@@ -17,11 +17,11 @@ ID_run                = as.numeric(args[1])
 n_transcript_label = "all"
 num_cores <- 10
 
-path = "/shared/projects/microbiome_translocation/"
+path = "~//"
 transcript_dir=paste0(path, "/data/Simulation/realist/transcripts/",ID_run,"/")
 data_dir=paste0(path, "data/Simulation/realist/")
 
-path_parameters = "/shared/projects/microbiome_translocation/database_clean/selected_genomes/realist/"
+path_parameters = "~//database_clean/selected_genomes/realist/"
 transcripts_to_draw=read.delim(paste0(path_parameters,"transcript_to_draw.tsv"), sep="\t")
 row.names(transcripts_to_draw) = sapply(c(0:49), toString)
 colnames(transcripts_to_draw) = str_remove(colnames(transcripts_to_draw), "g_")

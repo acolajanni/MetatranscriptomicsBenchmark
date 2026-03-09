@@ -10,44 +10,34 @@ module load seqkit
 
 
 
-PATH_DATA="${1:-/shared/projects/microbiome_translocation/data/Simulation/family/}"
-n_transcript="${2:-10}"
+PATH_DATA="${1:-~//data/Simulation/with_replacement/}"
+n_transcript="${2:-200}"
 replicate="${3:-10}"
-PROJECT_NAME="${4:-family}"
+PROJECT_NAME="${4:-with_replacement}"
 ONLY_HUMAN="${5:-FALSE}"
-folder="${6:-/}"
 
-
-### PROJECT_NAME sert à rien ?
-
-
-MAIN_PATH=/shared/projects/microbiome_translocation/
+MAIN_PATH=~//
 SCRIPT_DIR=${MAIN_PATH}fastq_scripts/Simulation/
 cd $SCRIPT_DIR
 
-PATH_DATABASE=${MAIN_PATH}database_clean/transcript_database/${folder}/${SLURM_ARRAY_TASK_ID}/dedup_transcripts_ID/
 
+if [[ $PROJECT_NAME = "family" ]] ; then
+    family=TRUE
+    PATH_DATABASE=${MAIN_PATH}database_clean/transcript_database/family/${SLURM_ARRAY_TASK_ID}/dedup_transcripts_ID/
 
-### /Bcereus/ or /Gorganvirus/
-sp="${folder%/*}" 
-sp="${sp##*/}"
-
-
-if [[ "$n_transcript" == "all" ]]; then
-    # get number of transcripts in file. Be carefull, must have only one fasta/boolaray file in this folder
-    file=(${PATH_DATABASE}*_boolaray.tsv)
-    ### Vérifier que les deux ne posent pas de problèmes
-    n_transcript=$(awk -F'\t' '$3 == "TRUE" { count++ } END { print count }' $file)
-    n_transcript="all"
-
-    all_transcripts=TRUE
+else 
+    family=FALSE
+    PATH_DATABASE=${MAIN_PATH}database_clean/transcript_database/${SLURM_ARRAY_TASK_ID}/dedup_transcripts_ID/
 fi
 
 
+
+
+
 ##### 1: Create R scripts to select the transcripts (Build simulated metagenome)
-Rscript --no-save --no-restore ${SCRIPT_DIR}00_Build_simulated_metagenome_v3.r \
+Rscript --no-save --no-restore ${SCRIPT_DIR}04bis_Build_simulated_metagenome.r \
     $n_transcript $replicate $SLURM_ARRAY_TASK_ID \
-    Simulation/${PROJECT_NAME}/ TRUE ${ONLY_HUMAN} $folder $all_transcripts
+    Simulation/${PROJECT_NAME}/ TRUE ${ONLY_HUMAN} $family
 
 
 ##### 2: take transcripts ID and extracting them into separate fasta file
@@ -59,11 +49,6 @@ for phylum_file in ${replicate_dir}*_${n_transcript}.txt ; do
 
     phylum="${phylum_file%_*}" 
     phylum="${phylum##*/}"
-
-    if [[ "$folder" != "/" && "$sp" != "$phylum" ]] ; then
-        continue
-    fi
-    
 
     # Seqkit de-duplicate given ID
     n_id=$(sort $phylum_file | uniq -c | wc -l)

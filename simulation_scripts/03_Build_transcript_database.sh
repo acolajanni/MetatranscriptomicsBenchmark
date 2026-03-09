@@ -5,6 +5,9 @@
 #SBATCH --array=0-9
 #############################
 
+### Concatenate all the transcriptomes from the same phylum
+
+
 module purge
 module load seqkit
 
@@ -114,24 +117,3 @@ for f in ${PATH_TRANSCRIPT_DATABASE}/*.fasta  ; do
 
 done
 
-
-    # # awk '/^>/ {
-    # #     header=$0; 
-    # #     count[header]++; 
-    # #     if (count[header] > 1) {
-    # #         print header "_" count[header] - 1;
-    # #     } else { 
-    # #         print header;
-    # #     }
-    # # } !/^>/ {print}' ${PATH_TRANSCRIPT_DATABASE}Homo_sapiens_rna_transcripts.fasta > ${PATH_TRANSCRIPT_DATABASE}/dedup_transcripts_ID/Homo_sapiens_rna_transcripts.fasta
-
-
-    #     awk '/^>/ {
-    #     header=$0; 
-    #     count[header]++; 
-    #     if (count[header] > 1) {
-    #         print header "_" count[header] - 1;
-    #     } else { 
-    #         print header;
-    #     }
-    # } !/^>/ {print}' ${PATH_TRANSCRIPT_DATABASE}Homo_sapiens_t2t_transcripts.fasta > ${PATH_TRANSCRIPT_DATABASE}/dedup_transcripts_ID/Homo_sapiens_t2t_transcripts.fasta

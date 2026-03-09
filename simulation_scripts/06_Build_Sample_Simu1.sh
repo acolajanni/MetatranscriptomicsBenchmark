@@ -10,12 +10,12 @@ module load seqkit
 module load r/4.2.3
 
 
-condition_list="${1:-/shared/projects/microbiome_translocation/data/Simulation/condition_list.tsv}"
-PATH_DATA="${2:-/shared/projects/microbiome_translocation/data/Simulation/with_replacement/}"
+condition_list="${1:-~/data/Simulation/condition_list.tsv}"
+PATH_DATA="${2:-~/data/Simulation/with_replacement/}"
 
 
 
-PATH_MAIN=/shared/projects/microbiome_translocation/
+PATH_MAIN=~/
 
 
 # Retrieve conditions through config file "condition_list.tsv" and other variables

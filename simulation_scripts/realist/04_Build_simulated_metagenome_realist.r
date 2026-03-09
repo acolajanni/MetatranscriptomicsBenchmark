@@ -20,13 +20,13 @@ project_name = "Simulation/realist/"
 dir.create(paste0(path, 'data/',project_name,'transcripts/'), showWarnings = FALSE)
 data_dir=paste0(path, 'data/',project_name)
 
-load( "/shared/projects/microbiome_translocation/database_clean/selected_genomes/selected_genomes_list.RData")
+load( "~//database_clean/selected_genomes/selected_genomes_list.RData")
 
-path_parameters = "/shared/projects/microbiome_translocation/database_clean/selected_genomes/realist/"
+path_parameters = "~//database_clean/selected_genomes/realist/"
 transcripts_to_draw=read.delim(paste0(path_parameters,"transcript_to_draw.tsv"), sep="\t")
 row.names(transcripts_to_draw) = sapply(c(0:49), toString)
   
-path = "/shared/projects/microbiome_translocation/"
+path = "~//"
 path_database_short=paste0(path,'database_clean/transcript_database/realist/')
 n_replicate=as.numeric(nrow(transcripts_to_draw))
 colnames(transcripts_to_draw) = str_remove(colnames(transcripts_to_draw), "g_")

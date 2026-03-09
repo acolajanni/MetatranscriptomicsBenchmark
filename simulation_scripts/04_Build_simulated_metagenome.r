@@ -23,14 +23,6 @@ onlyhuman = args[6]
 folder= args[7]
 all_transcripts=args[8]
 
-# n_transcript = 1183
-# n_replicate  = 10
-# replicate_number = 0
-# project_name = "Simulation/with_replacement/"
-# replacement = "TRUE"
-# onlyhuman = "FALSE"
-# folder = "/Gorganvirus/"
-# all_transcripts="TRUE"
 
 print(n_transcript)
 print(n_replicate)
@@ -49,9 +41,9 @@ if(str_detect(folder, "family")){
 }else{family = "FALSE"}
 
 
-path = "/shared/projects/microbiome_translocation/"
+path = "~/"
 
-load( "/shared/projects/microbiome_translocation/database_clean/selected_genomes/selected_genomes_list.RData")
+load( "~/database_clean/selected_genomes/selected_genomes_list.RData")
 random_drawing=lapply(random_drawing, function(x) {return(unique( x[,c("taxid","F","G")] ) ) })
 taxid_taxo_key=unique(do.call(rbind , random_drawing) )
 taxid_taxo_key=rbind(
