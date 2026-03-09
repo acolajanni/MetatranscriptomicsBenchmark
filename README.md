@@ -257,9 +257,9 @@ Output of this step:
 
 ## Simulation scripts
 
-To repreduce the simulated datasets follow the instructions: 
+To reproduce the simulated datasets follow the instructions: 
 
-For the evaluation of sequencing depth: 
+### Evaluation of sequencing depth
 
 ```bash
 PATH_DATA=~/data/Simulation/with_replacement/
@@ -270,6 +270,8 @@ Rscript ./simulation_scripts/01_select_genomes.r
 sbatch ./simulation_scripts/02_download_transcriptome.sh
 
 sbatch ./simulation_scripts/03_Build_transcript_database.sh
+# Launch in sbatch array --array=0-9
+Rscript ./simulation_scripts/00_Get_transcripts_info.r $SLURM_ARRAY_TASK_ID with_replacement/
 
 sbatch ./simulation_scripts/04_Select_transcripts.sh
 
@@ -286,19 +288,82 @@ sbatch ./simulation_scripts/05_launch_reads_simulation.sh $PATH_DATA 200 100 $TR
 sbatch ./simulation_scripts/06_Build_Sample_Simu1.sh
 ```
 
+### Evaluation of the impact of human genome
 
-For the evaluation of the impact of human genome: 
 
 ```bash
+PATH_DATA=~/data/Simulation/with_replacement/
+TRANSCRIPT_DIR=~/data/Simulation/with_replacement/transcripts/
+PROJECT_NAME=with_replacement
+
+Rscript ./simulation_scripts/01_select_genomes.r
+
+sbatch ./simulation_scripts/02_download_transcriptome.sh
+
+sbatch ./simulation_scripts/03_Build_transcript_database.sh
+# Launch in sbatch array --array=0-9
+Rscript ./simulation_scripts/00_Get_transcripts_info.r $SLURM_ARRAY_TASK_ID with_replacement/
+
+### Simulate separately for human transcripts and other
+@1: PATH_DATA
+@2: number of transcript to draw
+@3: number of replicates
+@4: project name
+@5: boolean - TRUE to select only human transcripts // false for all transcripts 
+
+# 1) microbial reads
+sbatch ./simulation_scripts/04_Select_transcripts.sh $PATH_DATA 45 10 $PROJECT_NAME FALSE
+
+# 2) 10% human
+sbatch ./simulation_scripts/04_Select_transcripts.sh $PATH_DATA 185 10 $PROJECT_NAME TRUE
+
+# 3) 50% human
+sbatch ./simulation_scripts/04_Select_transcripts.sh $PATH_DATA 1665 10 $PROJECT_NAME TRUE
+
+# 4) 90% human
+sbatch ./simulation_scripts/04_Select_transcripts.sh $PATH_DATA 14985 10 $PROJECT_NAME TRUE
+
+
+sbatch ./simulation_scripts/05_launch_reads_simulation.sh $PATH_DATA 200 100 $TRANSCRIPT_DIR
+
+sbatch ./simulation_scripts/06_Build_Sample_Simu2.sh
 
 
 ```
 
+### Evaluation of the classification strategies at various taxonomic level
 
-For the evaluation of classification performances at various taxonomic level
 
 ```bash
+PATH_DATA=~/data/Simulation/family/
+TRANSCRIPT_DIR=~/data/Simulation/with_replacement/transcripts/
+PROJECT_NAME=family
 
+Rscript ./simulation_scripts/01_select_genomes.r
+
+sbatch ./simulation_scripts/02_download_transcriptome.sh
+
+sbatch ./simulation_scripts/family/03_Build_transcript_database_family.sh
+# Launch in sbatch array --array=0-9
+Rscript ./simulation_scripts/00_Get_transcripts_info.r $SLURM_ARRAY_TASK_ID family/
+
+### Simulate separately for human transcripts and other
+@1: PATH_DATA
+@2: number of transcript to draw
+@3: number of replicates
+@4: project name
+@5: boolean - TRUE to select only human transcripts // false for all transcripts 
+
+# 1) microbial reads
+sbatch ./simulation_scripts/family/04_Select_transcripts_family.sh $PATH_DATA 10 10 $PROJECT_NAME FALSE
+
+# 2) 90% human
+sbatch ./simulation_scripts/family/04_Select_transcripts_family.sh $PATH_DATA 10710 10 $PROJECT_NAME TRUE
+
+
+sbatch ./simulation_scripts/05_launch_reads_simulation.sh $PATH_DATA 200 100 $TRANSCRIPT_DIR
+
+sbatch ./simulation_scripts/06_Build_Sample_Simu2.sh ${PATH_DATA}/condition_list_family.tsv $PATH_DATA 
 
 ```
 
@@ -307,5 +372,30 @@ For the realistic simulation dataset
 
 ```bash
 
+# 1) From Gihawi et al. 2023, simulate the number of trancripts to draw
+Rscript ./simulation_scripts/realist/00_get_nread_to_simulate_gihawietal.R
+
+# 2) Select the genus to simulate from
+Rscript ./simulation_scripts/realist/01_Select_genomes_from_genus.R
+
+# 3) Download sequences
+sbatch ./simulation_scripts/realist/02_Download_transcriptome_realist.sh
+
+
+# 4) Gather transcripts + transcripts information
+sbatch ./simulation_scripts/realist/03_Build_transcript_database_realist.sh
+
+# Launch in sbatch array --array=0-49
+Rscript ./simulation_scripts/00_Get_transcripts_info.r $SLURM_ARRAY_TASK_ID realist/
+
+# 5) Draw and format the transcripts
+ sbatch ./simulation_scripts/realist/04_Select_transcripts_realist.sh
+
+# 6) Simulate
+sbatch ./simulation_scripts/realist/05_launch_reads_simulation_realist.sh
+
+
+# 7) Create the sample files
+sbatch ./simulation_scripts/realist/06_Build_Sample_realist.sh
 
 ```
