@@ -348,11 +348,11 @@ sbatch ./simulation_scripts/family/03_Build_transcript_database_family.sh
 Rscript ./simulation_scripts/00_Get_transcripts_info.r $SLURM_ARRAY_TASK_ID family/
 
 ### Simulate separately for human transcripts and other
-@1: PATH_DATA
-@2: number of transcript to draw
-@3: number of replicates
-@4: project name
-@5: boolean - TRUE to select only human transcripts // false for all transcripts 
+# @1: PATH_DATA
+# @2: number of transcript to draw
+# @3: number of replicates
+# @4: project name
+# @5: boolean - TRUE to select only human transcripts // false for all transcripts 
 
 # 1) microbial reads
 sbatch ./simulation_scripts/family/04_Select_transcripts_family.sh $PATH_DATA 10 10 $PROJECT_NAME FALSE
