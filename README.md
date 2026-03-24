@@ -116,14 +116,14 @@ Filtered reads → Kraken classification → taxonomic profiles
 
 ```bash
 # For KrakenUniq
-sbatch ./pipeline_scripts/04alt-Kraken_classif.sh ~/data/STAR_mapping_hg19/ ~/results/ PE kuniq $microbialDB ~/data/sra_list_RNA.txt
+sbatch ./pipeline_scripts/04alt-Kraken_classif.sh ./data/STAR_mapping_hg19/ ./results/ PE kuniq $microbialDB ./data/sra_list_RNA.txt
 
 # For Kraken2
-sbatch ./pipeline_scripts/04alt-Kraken_classif.sh ~/data/STAR_mapping_hg19/ ~/results/ PE kraken2 $k2_nt ~/data/sra_list_RNA.txt
+sbatch ./pipeline_scripts/04alt-Kraken_classif.sh ./data/STAR_mapping_hg19/ ./results/ PE kraken2 $k2_nt ./data/sra_list_RNA.txt
 ```
 
 Output of this step:
-- CLassification at read level in `~/results/kraken/microbialDB/kuniq/sampleID/ReadsClassif.txt` or `~/results/kraken/nt/kraken2/sampleID/ReadsClassif.txt`
+- CLassification at read level in `./results/kraken/microbialDB/kuniq/sampleID/ReadsClassif.txt` or `./results/kraken/nt/kraken2/sampleID/ReadsClassif.txt`
 
 
 ---
@@ -158,10 +158,10 @@ This strategy allows read-level classification based on assembled sequences
 
 ```bash
 # For Trinity
-sbatch ./pipeline_scripts/04alt-Trinity_parallel.sh ~/data/ ~/results/ PE ~/data/sra_list_RNA.txt ~/data/STAR_mapping_hg19/
+sbatch ./pipeline_scripts/04alt-Trinity_parallel.sh ./data/ ./results/ PE ./data/sra_list_RNA.txt ./data/STAR_mapping_hg19/
 
 # For SPAdes
-sbatch ./pipeline_scripts/04-Spades_assembly.sh ~/results/ PE ~/data/sra_list_RNA.txt ~/data/STAR_mapping_hg19/
+sbatch ./pipeline_scripts/04-Spades_assembly.sh ./results/ PE ./data/sra_list_RNA.txt ./data/STAR_mapping_hg19/
 ```
 
 ##### 2) Map contigs against hg38, retrieve unmapped contigs 
@@ -169,10 +169,10 @@ sbatch ./pipeline_scripts/04-Spades_assembly.sh ~/results/ PE ~/data/sra_list_RN
 ```bash
 
 # For Trinity
-sbatch ~/pipeline_scripts/Alignment/04-Bowtie_align.sh ~/results/Contigs/ trinity ~/data/sra_list_RNA.txt hg38 ~/results/Contigs/ TRUE FALSE FALSE  
+sbatch ./pipeline_scripts/Alignment/04-Bowtie_align.sh ./results/Contigs/ trinity ./data/sra_list_RNA.txt hg38 ./results/Contigs/ TRUE FALSE FALSE  
 
 # For SPAdes
-sbatch ~/pipeline_scripts/Alignment/04-Bowtie_align.sh ~/results/Contigs_rnaSpades/ trinity ~/data/sra_list_RNA.txt hg38 ~/results/Contigs_rnaSpades/ TRUE FALSE FALSE  
+sbatch ./pipeline_scripts/Alignment/04-Bowtie_align.sh ./results/Contigs_rnaSpades/ trinity ./data/sra_list_RNA.txt hg38 ./results/Contigs_rnaSpades/ TRUE FALSE FALSE  
 
 ```
 
@@ -180,24 +180,24 @@ sbatch ~/pipeline_scripts/Alignment/04-Bowtie_align.sh ~/results/Contigs_rnaSpad
 
 ```bash
 # For Trinity
-sbatch ./pipeline_scripts/05-BLAST_request.sh ~/results/Contigs/ ~/data/sra_list_RNA.txt TRUE FALSE trinity
+sbatch ./pipeline_scripts/05-BLAST_request.sh ./results/Contigs/ ./data/sra_list_RNA.txt TRUE FALSE trinity
 
 # For SPAdes
-sbatch ./pipeline_scripts/05-BLAST_request.sh ~/results/Contigs_rnaSpades/ ~/data/sra_list_RNA.txt TRUE FALSE rnaSpades
+sbatch ./pipeline_scripts/05-BLAST_request.sh ./results/Contigs_rnaSpades/ ./data/sra_list_RNA.txt TRUE FALSE rnaSpades
 ```
 
 ##### 4) Retrieve Reads classif from contig annotation
 
 ```bash
 # For Trinity
-sbatch ./pipeline_scripts/06-SalmonQuantification.sh ~/results/Contigs/ ~/data/STAR_mapping_hg19/ PE ~/data/sra_list_RNA.txt FALSE .fastq SRR trinity
+sbatch ./pipeline_scripts/06-SalmonQuantification.sh ./results/Contigs/ ./data/STAR_mapping_hg19/ PE ./data/sra_list_RNA.txt FALSE .fastq SRR trinity
 #
  For SPAdes
-sbatch ./pipeline_scripts/06-SalmonQuantification.sh ~/results/Contigs/ ~/data/STAR_mapping_hg19/ PE ~/data/sra_list_RNA.txt FALSE .fastq SRR rnaSpades
+sbatch ./pipeline_scripts/06-SalmonQuantification.sh ./results/Contigs/ ./data/STAR_mapping_hg19/ PE ./data/sra_list_RNA.txt FALSE .fastq SRR rnaSpades
 ```
 
 Output of this step:
-- CLassification at read level in `~/results/Contigs/sampleID/ContigsToReads/ReadsClassif.txt` or `~/results/Contigs_rnaSpades/sampleID/ContigsToReads/ReadsClassif.txt`
+- CLassification at read level in `./results/Contigs/sampleID/ContigsToReads/ReadsClassif.txt` or `./results/Contigs_rnaSpades/sampleID/ContigsToReads/ReadsClassif.txt`
 
 
 
@@ -213,7 +213,7 @@ Additional scripts generate hybrid strategies results for by combining the outpu
 
   
 ```bash
-RESULTS_PATH=~/results/
+RESULTS_PATH=./results/
 
 if    [ $CLASSIF_1 = "kuniq" ] ; then 
       classif_path1=${RESULTS_PATH}/kraken/microbialDB/kuniq/
@@ -246,12 +246,12 @@ method_name=hybrid_${name1}-${name2}
 
 
 
-sbatch ./pipeline_scripts/07-Hybrid_classif.sh $RESULTS_PATH $classif_path1 $classif_path2 ~/data/sra_list_RNA.txt $method_name
+sbatch ./pipeline_scripts/07-Hybrid_classif.sh $RESULTS_PATH $classif_path1 $classif_path2 ./data/sra_list_RNA.txt $method_name
 
 ```
 
 Output of this step:
-- CLassification at read level for each strategies in  `~/results/hybrid/${method_name}/sampleID/ReadsClassif.txt` 
+- CLassification at read level for each strategies in  `./results/hybrid/${method_name}/sampleID/ReadsClassif.txt` 
 
 
 
@@ -262,8 +262,8 @@ To reproduce the simulated datasets follow the instructions:
 ### Evaluation of sequencing depth
 
 ```bash
-PATH_DATA=~/data/Simulation/with_replacement/
-TRANSCRIPT_DIR=~/data/Simulation/with_replacement/transcripts/
+PATH_DATA=./data/Simulation/with_replacement/
+TRANSCRIPT_DIR=./data/Simulation/with_replacement/transcripts/
 
 Rscript ./simulation_scripts/01_select_genomes.r
 
@@ -292,8 +292,8 @@ sbatch ./simulation_scripts/06_Build_Sample_Simu1.sh
 
 
 ```bash
-PATH_DATA=~/data/Simulation/with_replacement/
-TRANSCRIPT_DIR=~/data/Simulation/with_replacement/transcripts/
+PATH_DATA=./data/Simulation/with_replacement/
+TRANSCRIPT_DIR=./data/Simulation/with_replacement/transcripts/
 PROJECT_NAME=with_replacement
 
 Rscript ./simulation_scripts/01_select_genomes.r
@@ -335,8 +335,8 @@ sbatch ./simulation_scripts/06_Build_Sample_Simu2.sh
 
 
 ```bash
-PATH_DATA=~/data/Simulation/family/
-TRANSCRIPT_DIR=~/data/Simulation/with_replacement/transcripts/
+PATH_DATA=./data/Simulation/family/
+TRANSCRIPT_DIR=./data/Simulation/with_replacement/transcripts/
 PROJECT_NAME=family
 
 Rscript ./simulation_scripts/01_select_genomes.r
