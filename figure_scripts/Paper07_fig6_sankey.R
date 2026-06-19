@@ -275,11 +275,26 @@ if (SRA_id %in% c("all","responder","non_responder") ){
 }
 
 
+### Merge rare taxons
+taxons=as.data.frame(table(unlist(merged_df[ , -1])))
+colnames(taxons)[1] = "taxon_full_name"
+
+taxons$taxon_full_name=sapply(as.character(taxons$taxon_full_name), function(x){
+  x=str_replace(x,pattern = fixed("|"), replacement = " - " )
+  return(x)
+})
+
+taxons$superkingdom=sapply(as.character(taxons$taxon_full_name), function(x){
+  x=strsplit(x, " - ", fixed=TRUE )[[1]][1]
+  return(x)
+})
+taxons$phylum=sapply(as.character(taxons$taxon_full_name), function(x){
+  x=strsplit(x, " - ",fixed=TRUE)[[1]][2]
+  return(x)
+})
+
 tmp=merged_df[,c("read","hybrid_Blast_kuniq","KuK2")]
 tmp = tmp[tmp$hybrid_Blast_kuniq != tmp$KuK2,]
-
-
-read_save_dir=paste0(path_result,"specific_reads/")
 
 
 ### Change format of certain viruses:
@@ -333,7 +348,7 @@ cols_to_replace=colnames(merged_df)[-1]
 
 
 
-load(file = paste0("~/results/color_dict_fig6.rdata"))
+load(file = paste0(path,"/results/color_dict_fig6.rdata"))
 
 names(color_dict)=str_replace(names(color_dict), "-", ' - ')
 setdiff(names(color_dict), unique(rename_taxa$final_name))
@@ -345,7 +360,7 @@ for (col in cols_to_replace) {
   print(col)
   merged_df[[col]]=rename_taxa$final_name[match(merged_df[[col]], as.character(rename_taxa$taxon_full_name))]
 }
-#apply(merged_df, MARGIN = 2, FUN = count_na)
+# apply(merged_df, MARGIN = 2, FUN = count_na)
 # 
 # color_dict=Taxonomy_small_color_palette(rename_taxa,"final_name")
 # color_dict[["Unassembled"]]="#444444"
@@ -406,22 +421,22 @@ p2=ggplot(df2_all, aes(x = x,
   scale_fill_manual(values = color_dict) +
   #xlab(paste("Patient",patient_id))+  
   scale_x_discrete(labels = 
-                     c("Trinity-Blast\nnt",
+                     c("Trinity-Blast¹",
                        #"Spades-Blast\nnt",
-                       "Hybrid-Trinity-KUniq\nnt + microbialDB",
+                       "Trinity-Blast¹\n+KUniq²",
                        #"Hybrid-Spades-KUniq\nnt + microbialDB",
-                       "KUniq-K2\nmicrobialDB + nt"
+                       "KUniq²\n+K2¹"
                      )) +
   theme_sankey(base_size = 10 ) +
   theme(legend.position = "bottom", axis.text.x=element_text(size=10, face="bold"))
 p2
 
-ggsave(p2,filename=paste0("~/results/Simulation/figures_review/fig8.jpeg"),
+ggsave(p2,filename=paste0(path,"/results/Simulation/figures_review/fig6.jpeg"),
        device = "jpeg",width = 30, height = 20,dpi = 600 , units = "cm", create.dir = TRUE)
 
 
 ggsave(p2,
-       filename = "~/results/Simulation/figures_review/fig8.svg",
+       filename = paste0(path,"/results/Simulation/figures_review/fig6.svg"),
        device = "svg",
        width = 30,
        height = 20,
@@ -430,7 +445,7 @@ ggsave(p2,
        create.dir = TRUE)
 
 ggsave(p2,
-       filename = "~/results/Simulation/figures_review/fig8.tiff",
+       filename = paste0(path,"/results/Simulation/figures_review/fig6.tiff"),
        device = "tiff",compression = "lzw",
        width = 30, height = 20,
        dpi = 600,

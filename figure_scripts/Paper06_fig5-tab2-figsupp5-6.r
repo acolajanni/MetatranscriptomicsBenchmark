@@ -1,10 +1,5 @@
-#!/shared/ifbstor1/software/miniconda/envs/r-4.2.3/bin/Rscript
-#install.packages("ggh4x")
-#devtools::install_github("davidsjoberg/ggsankey")
-
 library(stringr)
 library(plyr)
-library(ggsankey)
 library(ggplot2)
 library(dplyr)
 library(cowplot)
@@ -12,6 +7,8 @@ library(ggbreak)
 library(patchwork)
 library(tidyr)
 library(viridis)
+library(ggh4x)
+
 
 label_df <- as.data.frame(
   list(
@@ -32,20 +29,18 @@ label_df <- as.data.frame(
     
     labels2lines = c(
       # Contig solo
-      "- Trinity-Blast -\nnt",
-      "- Spades-Blast -\nnt",
+      "Trinity-Blast¹",
+      "SPAdes-Blast¹",
       # Hybrid Trinity
-      #"Hybrid-Trinity-K2\nnt",
-      "- Hybrid-Trinity-KUniq -\nnt + microbialDB",
+      "Trinity-Blast¹\n+ KUniq²",
       # Hybrid spades
-      #"Hybrid-Spades-K2\nnt",
-      "- Hybrid-Spades-KUniq -\nnt + microbialDB",
+      "SPAdes-Blast¹\n+ KUniq²",
       # double kmer
-      #"K2-KUniq\nnt+microbialDB",
-      "- KUniq-K2 -\nmicrobialDB+nt",
+      "KUniq²\n+ K2¹",
       # kmer solo
-      "- K2 -\nnt",
-      "- KUniq -\nmicrobialDB" ),
+      "K2¹",
+      "KUniq²"
+    ),
     
     family_method = c(
       "Assembly-based","Assembly-based",
@@ -297,15 +292,15 @@ ggplot(n_reads, aes(x = read_number)) +
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
 theme_fig6=function(plot){
   return(plot + theme(strip.background = element_rect(fill="#333333") , 
-                      strip.text = element_text(size = 7, face = "bold"),
-                      axis.title.y= element_text(size = 8, face = "bold"),
-                      axis.title.x= element_text(size = 8),
-                      axis.text.x = element_text(size = 7),
-                      axis.text.y = element_text(size = 7),
+                      strip.text = element_text(size = 10, face = "bold"),
+                      axis.title.y= element_text(size = 12, face = "bold"),
+                      axis.title.x= element_text(size = 12),
+                      axis.text.x = element_text(size = 10),
+                      axis.text.y = element_text(size = 10),
                       
                       legend.position = "right",
                       legend.key = element_rect(color="black"),
-                      legend.text=element_text(size=8),
+                      legend.text=element_text(size=9),
                       legend.title = element_blank(),
                       legend.key.width = unit(0.55, "cm"),
                       legend.key.height = unit(0.55, "cm"),  
@@ -406,13 +401,14 @@ score_triangle <- score_heatmap %>%
   )
 
 
-order_labels=c("- Trinity-Blast -\nnt",
-  "- Spades-Blast -\nnt",
-  "- K2 -\nnt",
-  "- KUniq -\nmicrobialDB",
-  "- Hybrid-Trinity-KUniq -\nnt + microbialDB",
-  "- Hybrid-Spades-KUniq -\nnt + microbialDB",
-  "- KUniq-K2 -\nmicrobialDB+nt")
+order_labels <- c(
+  "Trinity-Blast¹",
+  "SPAdes-Blast¹",
+  "K2¹",
+  "KUniq²",
+  "Trinity-Blast¹\n+ KUniq²",
+  "SPAdes-Blast¹\n+ KUniq²",
+  "KUniq²\n+ K2¹" )
 
 order_methods=c("trinityBlast" , "spadesBlast" , 
   "kraken2" , "kuniq", 
@@ -482,15 +478,17 @@ score_triangle_un <- score_heatmap_un %>%
   )
 
 
-order_labels=c("- Trinity-Blast -\nnt",
-  "- Spades-Blast -\nnt",
-  "- K2 -\nnt",
-  "- KUniq -\nmicrobialDB",
-  "- Hybrid-Trinity-KUniq -\nnt + microbialDB",
-  "- Hybrid-Spades-KUniq -\nnt + microbialDB",
-  "- KUniq-K2 -\nmicrobialDB+nt")
+order_labels <- c(
+  "Trinity-Blast¹",
+  "SPAdes-Blast¹",
+  "K2¹",
+  "KUniq²",
+  "Trinity-Blast¹\n+ KUniq²",
+  "SPAdes-Blast¹\n+ KUniq²",
+  "KUniq²\n+ K2¹" )
 
-order_methods=c("trinityBlast" , "spadesBlast" , 
+order_methods=c(
+  "trinityBlast" , "spadesBlast" , 
   "kraken2" , "kuniq", 
   "trinityKu" , 
   "spadesKu" , 
@@ -545,59 +543,89 @@ lower_df <- score_triangle_full %>%
 
 plot_df <- bind_rows(upper_df, lower_df)
 
-p=ggplot(plot_df, aes(labels2lines.x, labels2lines.y, fill = agreement)) +
+plot_df$family_method.x = ifelse(plot_df$family_method.x == "Combined assembly-free", "Combined\nassembly-free", as.character(plot_df$family_method.x) )
+plot_df$family_method.x=factor(plot_df$family_method.x, levels=c("Assembly-based","Assembly-free","Hybrid","Combined\nassembly-free"))
+
+p = ggplot(plot_df, aes(labels2lines.x, labels2lines.y, fill = agreement)) +
   geom_tile(color = "white") +
   geom_text(aes(
     label = sprintf("%.3f", agreement),
-    color = ifelse(agreement > 0.5, "white", "black")  # conditional text color
-  ), size = 4, fontface="bold") +
-  scale_color_manual(values=c("white","black"))+
-  guides(color="none")+
-  scale_fill_viridis(option = "F") +
+    color = ifelse(agreement > 0.5, "white", "black")
+  ), size = 4, fontface = "bold") +
+  scale_color_manual(values = c("white", "black")) +
+  guides(color = "none") +
+  scale_fill_viridis(
+    option = "F",
+    guide = guide_colorbar(
+      title.position = "top",
+      barwidth = grid::unit(10, "cm"),
+      barheight = grid::unit(0.8, "cm")
+    )
+  ) +
   theme_linedraw() +
-  labs(x = NULL,y = NULL, fill = "Agreement") + 
-  ggh4x::facet_nested(cols=vars(family_method.x,labels2lines.x), scales="free")
-
+  labs(x = NULL, y = NULL, fill = "Pairwise agreement") +
+  ggh4x::facet_nested(cols = vars(family_method.x, labels2lines.x), scales = "free") +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    legend.text = element_text(size = 14)
+  )
 
 
 ##### Merge both:
-heatmap_aggreement2=theme_fig6(p) + 
+heatmap_aggreement2 = theme_fig6(p) +
   labs(fill = "Pairwise agreement") +
-  guides(fill = guide_colorbar(title.position = "top")) +
-  theme(legend.position = "bottom",legend.title = element_text(hjust = 0.5) )
+  scale_fill_viridis(
+    option = "F",
+    guide = guide_colorbar(
+      title.position = "top",
+      barwidth = grid::unit(8, "cm"),
+      barheight = grid::unit(0.8, "cm")
+    )
+  ) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    legend.text = element_text(size = 12)
+  )
 
-heatmap_aggreement2
 
-figsupp4jpeg="~/results/Simulation/figures_review/figsupp4.jpeg"
-figsupp4svg="~/results/Simulation/figures_review/figsupp4.svg"
+figsupp6jpeg=paste0(path,"/results/Simulation/figures_review/figsupp6.jpeg")
+figsupp6svg=paste0(path,"/results/Simulation/figures_review/figsupp6.svg")
+figsupp6tif=paste0(path,"/results/Simulation/figures_review/figsupp6.tif")
 
 ggsave(heatmap_aggreement2,
-       filename = figsupp4jpeg,
+       filename = figsupp6jpeg,
        device = "jpeg",
-       width = 29,
+       width = 25,
        height = 20,
        dpi = 600,
        units = "cm",
        create.dir = TRUE)
 
-magick::image_read(figsupp4jpeg)
+magick::image_read(figsupp6jpeg)
 
 ggsave(heatmap_aggreement2,
-       filename = figsupp4svg,
+       filename = figsupp6svg,
        device = "svg",
-       width = 29,
+       width = 25,
        height = 20,
        dpi = 600,
        units = "cm",
        create.dir = TRUE)
 
+ggsave(heatmap_aggreement2,
+       filename = figsupp6tif,
+       device = "tiff",compression = "lzw",
+       width = 30, height = 20,
+       dpi = 600,
+       units = "cm",
+       create.dir = TRUE)
 
 
 ################################################################################
 ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
 ### Proportions as in the poster
-
-
 ################################################################################ Tab 3
 
 count_read=parallel::mclapply(classif, function(df){
@@ -651,8 +679,8 @@ count_read <- count_read %>%
 
 
 
-# write.table(count_read[,c(1,2,5)], file = "~/results/Simulation/figures_review/table3_data_reviews.tsv",
-#             quote=FALSE, row.names=FALSE, sep="\t")
+write.table(count_read[,c(1,2,5)], file = paste0(path,"/results/Simulation/figures_review/table2.tsv"),
+            quote=FALSE, row.names=FALSE, sep="\t")
 
 
 ################################################################################
@@ -786,23 +814,36 @@ p=ggplot(classif_smaller, aes(x=.id, y=NumReads, fill = final_name) ) +
                scales="free")
   
 
+fig5supp=theme_fig6(p) + theme(strip.text = element_text(size=8.5))
 
-fig6supp=theme_fig6(p) + theme(strip.text = element_text(size=7))
-figsupp3="~/results/Simulation/figures_review/figsupp3.jpeg"
-figsupp3svg="~/results/Simulation/figures_review/figsupp3.svg"
 
-ggsave(fig6supp,
-       filename = figsupp3,
+figsupp5=paste0(path,"/results/Simulation/figures_review/figsupp5.jpeg")
+figsupp5tif=paste0(path,"/results/Simulation/figures_review/figsupp5.tif")
+
+figsupp5svg=paste0(path,"/results/Simulation/figures_review/figsupp5.svg")
+
+ggsave(fig5supp,
+       filename = figsupp5,
        device = "jpeg",
        width = 30,
        height = 20,
        dpi = 300,
        units = "cm",
        create.dir = TRUE)
+magick::image_read(figsupp5)
 
-magick::image_read(figsupp3)
-ggsave(fig6supp,
-       filename = figsupp3svg,
+ggsave(fig5supp,
+       filename = figsupp5tif,
+       device = "tiff",compression = "lzw",
+       width = 30, height = 20,
+       dpi = 600,
+       units = "cm",
+       create.dir = TRUE)
+
+
+
+ggsave(fig5supp,
+       filename = figsupp5svg,
        device = "svg",
        width = 30,
        height = 20,
@@ -830,18 +871,19 @@ p=ggplot(classif_smaller[classif_smaller$Method %in% c("kuk2","trinityBlast","tr
   ggh4x::facet_nested(cols = vars(family_method, labels2lines), 
                       scales="free")
 
+p
 
-
-fig6=theme_fig6(p)  + 
-  theme(strip.text = element_text(size=9),
+fig5=theme_fig6(p)  + 
+  theme(strip.text = element_text(size=12),
         legend.text = element_text(size=10),
         axis.text.y = element_text(size=8))
 
-fig7jpg="~/results/Simulation/figures_review/fig7.jpeg"
-fig7svg="~/results/Simulation/figures_review/fig7.svg"
+fig5jpg=paste0(path,"/results/Simulation/figures_review/fig5.jpeg")
+fig5svg=paste0(path,"/results/Simulation/figures_review/fig5.svg")
+fig5tif=paste0(path,"/results/Simulation/figures_review/fig5.tif")
 
-ggsave(fig6,
-       filename = fig7jpg,
+ggsave(fig5,
+       filename = fig5jpg,
        device = "jpeg",
        width = 30,
        height = 20,
@@ -849,10 +891,10 @@ ggsave(fig6,
        units = "cm",
        create.dir = TRUE)
 
-magick::image_read(fig6jpg)
+magick::image_read(fig5jpg)
 
-ggsave(fig6,
-       filename = fig7svg,
+ggsave(fig5,
+       filename = fig5svg,
        device = "svg",
        width = 30,
        height = 20,
@@ -860,9 +902,16 @@ ggsave(fig6,
        units = "cm",
        create.dir = TRUE)
 
+ggsave(fig5,
+       filename = fig5tif,
+       device = "tiff",compression = "lzw",
+       width = 30, height = 20,
+       dpi = 600,
+       units = "cm",
+       create.dir = TRUE)
 
 
-save(color_dict,file = paste0("~/results/color_dict_fig6.rdata"))
+save(color_dict,file = paste0(path,"/results/color_dict_fig6.rdata"))
 
 
 p=ggplot(classif_smaller, aes(x=.id, y=Freq, fill = final_name) ) +
@@ -873,7 +922,7 @@ p=ggplot(classif_smaller, aes(x=.id, y=Freq, fill = final_name) ) +
   xlab("") + 
   ylab(paste("Read quantity")) +
   coord_flip() + 
-  facet_nested(cols = vars(family_method, labels2lines), 
+  ggh4x::facet_nested(cols = vars(family_method, labels2lines), 
                scales="free")
 
 fig6_alt=theme_fig6(p)  
@@ -980,14 +1029,14 @@ theme_fig6(p2)
 counting2=aggregate(NumReads ~ Method+.id ,classif_red, sum)
 counting3=aggregate(NumReads ~ Method ,counting2, mean)
 
-ggsave(p1,filename=paste0("~/results/figures/distribution_proportion_Cleveland.png"),
+ggsave(p1,filename=paste0(path,"/results/figures/distribution_proportion_Cleveland.png"),
        device = "png",width = 48, height = 27, units = "cm", create.dir = TRUE)
-ggsave(p2,filename=paste0("~/results/figures/distribution_total_Cleveland.png"),
+ggsave(p2,filename=paste0(path,"/results/figures/distribution_total_Cleveland.png"),
        device = "png",width = 48, height = 27, units = "cm")
 
 
 ggsave(theme_fig6(p1),
-       filename = paste0("~/results/Simulation/figures_review/fig6_filtered_prop.jpeg"),
+       filename = paste0(path,"/results/Simulation/fig6_filtered_prop.jpeg"),
        device = "jpeg",
        width = 30,
        height = 20,

@@ -25,7 +25,7 @@ Get_alpha_div_per_samples=function(truth_df, classif_df){
     columns_to_aggregate=taxonomic_levels[1:which(level==taxonomic_levels)]
     # Aggregate species count for the current level
     agg_result <- aggregate(species ~ ., data = alphadiv[, c(level, "species")], length)
-
+    
     if (!level=="superkingdom"){
       agg_result =  unique(merge(agg_result, truth_df[,columns_to_aggregate], by=level ))
       agg_result$taxon_full_name <- apply(agg_result[,columns_to_aggregate], 1, function(row) paste(row, collapse = "_"))
@@ -99,7 +99,7 @@ Get_diversity_indexes=function(truth_df, classif_list, tax_lvl="family"){
              simpson_index = sum(pisquare))
     
     indexes$taxon_full_name = paste0(indexes$superkingdom, " - ", indexes$phylum)
-
+    
     indexes=indexes[,c("shanon_index","simpson_index","alpha_div",'taxon_full_name',"phylum")]
     indexes$taxlvl="phylum"
     return(indexes)
@@ -146,6 +146,13 @@ get_metrics_right_format_all_ranks=function(metrics_list, method, rt){
 
 path="~/"
 
+#path = path_local
+
+#setwd("/home/acolajanni/Documents/work/")
+
+# simulation_letter = args[1]
+# path_results = args[2]
+# strategy = args[3]
 
 path_results=paste0(path, "results/Simulation/family/kraken/nt/Kraken2/")
 
@@ -222,7 +229,7 @@ t=list(
   "B" = Get_alpha_div(truth, classifs[11:20]),
   "C" = Get_alpha_div(truth, classifs[21:30]),
   "D" = Get_alpha_div(truth, classifs[31:40])
-  )
+)
 
 alpha_div_global=ldply(t)
 alpha_div <- alpha_div %>%
@@ -252,7 +259,7 @@ for(i in letters_replicates){
   if       (i %in% c("A","C") ){rt="10r/t"
   }else if (i %in% c("B","D")){rt="100r/t"
   }
-
+  
   
   tmp_metrics = list()
   tmp_matrix  = list()
@@ -327,8 +334,6 @@ metrics_df$percentage_human=ifelse(!metrics_df$.id %in% c("A","B"), "90", "1/120
 unique(metrics_df$method)
 
 
-
-
 label_df <- as.data.frame(
   list(
     method = c(
@@ -342,23 +347,24 @@ label_df <- as.data.frame(
       "hybrid_kraken2-kuniq", "hybrid_kuniq-kraken2", 
       # kmer solo
       "kraken2", "kuniq" ),
-    
+
     labels2lines = c(
       # Contig solo
-      "Trinity-Blast\nnt",
-      "SPAdes-Blast\nnt",
+      "Trinity-Blast¹",
+      "SPAdes-Blast¹",
       # Hybrid Trinity
-      "Hybrid-Trinity-K2\nnt",
-      "Hybrid-Trinity-KUniq\nnt + microbialDB",
+      "Trinity-Blast¹\n+ K2¹",
+      "Trinity-Blast¹\n+ KUniq²",
       # Hybrid spades
-      "Hybrid-SPAdes-K2\nnt",
-      "Hybrid-SPAdes-KUniq\nnt + microbialDB",
+      "SPAdes-Blast¹\n+ K2¹",
+      "SPAdes-Blast¹\n+ KUniq²",
       # double kmer
-      "K2-KUniq\nnt+microbialDB",
-      "KUniq-K2\nmicrobialDB+nt",
+      "K2¹\n+ KUniq²",
+      "KUniq²\n+ K2¹",
       # kmer solo
-      "K2\nnt",
-      "KUniq\nmicrobialDB" ),
+      "K2¹",
+      "KUniq²"
+      ),
     
     family_method = c(
       "Assembly-based","Assembly-based",
@@ -376,62 +382,6 @@ label_df <- as.data.frame(
     
     
     
-    fill = c(
-      "#0F4F8A", "#6FA9C9",
-      "#9E84BE", "#4A1F78",
-      "#D98E2F", "#C45500",
-      "#7FB85C", "#1F6F1A",
-      "#D95C5A", "#9E0E12" )
-    ))
-
-
-label_df <- as.data.frame(
-  list(
-    method = c(
-      # Contig solo
-      "Blast","SpadesBlast" ,
-      # Hybrid Trinity
-      "hybrid_Blast-kraken2", "hybrid_Blast-kuniq", 
-      # Hybrid spades
-      "hybrid_SpadesBlast-kraken2","hybrid_SpadesBlast-kuniq",
-      # double kmer
-      "hybrid_kraken2-kuniq", "hybrid_kuniq-kraken2", 
-      # kmer solo
-      "kraken2", "kuniq" ),
-    
-    labels2lines = c(
-      # Contig solo
-      "Trinity-Blast\nnt",
-      "SPAdes-Blast\nnt",
-      # Hybrid Trinity
-      "Hybrid-Trinity-K2\nnt",
-      "Hybrid-Trinity-KUniq\nnt + microbialDB",
-      # Hybrid spades
-      "Hybrid-SPAdes-K2\nnt",
-      "Hybrid-SPAdes-KUniq\nnt + microbialDB",
-      # double kmer
-      "K2-KUniq\nnt+microbialDB",
-      "KUniq-K2\nmicrobialDB+nt",
-      # kmer solo
-      "K2\nnt",
-      "KUniq\nmicrobialDB" ),
-    
-    family_method = c(
-      "Assembly-based","Assembly-based",
-      "Hybrid", "Hybrid",
-      "Hybrid", "Hybrid",
-      "Combined assembly-free","Combined assembly-free",
-      "Assembly-free","Assembly-free" ), 
-    
-    
-    color=c("#053158","#084269", 
-            "#6A0080","#4B006E",
-            "saddlebrown","orangered4",
-            "#275c09","#1F4A07",
-            "#940C00","#730F0F" ) , 
-    
-
-
     # fill = c(
     #   "#0F4F8A", "#6FA9C9",
     #   "#9E84BE", "#4A1F78",
@@ -471,6 +421,9 @@ std <- function(x) sd(x)/sqrt(length(x))
 
 summary_metrics_df <- aggregate(cbind(Precision, Recall, F1) ~ superkingdom + phylum + labels2lines + method + family_method + .id + taxlvl + rt + percentage_human,
                                 metrics_df, function(x) c("mean" = mean(x), "std" = std(x)))
+
+
+
 summary_metrics_df <- do.call(data.frame, summary_metrics_df)
 names(summary_metrics_df) <- gsub("\\.", "_", names(summary_metrics_df))  # Clean column names if needed
 
@@ -527,6 +480,9 @@ theme_fig2 <- function(plot) {
 fill=label_df$fill
 names(fill)=label_df$labels2lines
 
+summary_metrics_df$phylum = ifelse(summary_metrics_df$phylum == "Thermodesulfobacteriota", 
+                                   "Thermodesulfo-\nbacteriota", summary_metrics_df$phylum)
+
 ########### change size:
 
 plots <- lapply(c("Bacteria", "Viruses","Eukaryota"), function(sk) {
@@ -544,7 +500,7 @@ plots <- lapply(c("Bacteria", "Viruses","Eukaryota"), function(sk) {
     sk = c("Bacteria","Archaea") 
   }
   
-
+  
   
   plot_F1 = ggplot(summary_metrics_df[
     summary_metrics_df$superkingdom %in% sk & 
@@ -569,10 +525,10 @@ plots <- lapply(c("Bacteria", "Viruses","Eukaryota"), function(sk) {
       strip.background = element_rect(fill = "#333333"),
       panel.background = element_rect(fill = "#FFFFFF"),
       legend.text = element_text(size = 9, face = "bold"),
-      strip.text = element_text(size = 7, face = "bold"),
-      axis.title.y = element_text(size = 7, face = "bold"),
-      axis.title.x = element_text(size = 7, face = "bold"),
-      axis.text.y = element_text(size = 7),
+      strip.text = element_text(size = 10, face = "bold"),
+      axis.title.y = element_text(size = 9, face = "bold"),
+      axis.title.x = element_text(size = 9, face = "bold"),
+      axis.text.y = element_text(size = 9),
       axis.text.x = element_text(size=0, color = "transparent")
     ) +
     facet_nested_wrap(vars(superkingdom, phylum), nrow = nrow)
@@ -580,11 +536,11 @@ plots <- lapply(c("Bacteria", "Viruses","Eukaryota"), function(sk) {
   if (add_xlabel){
     plot_F1 = plot_F1+theme(
       axis.text.x = element_text(
-      size = 7, 
-      angle = 45, 
-      hjust = 1, 
-      vjust = 0.9,
-      color = "black" ))
+        size = 9, 
+        angle = 45, 
+        hjust = 1, 
+        vjust = 0.9,
+        color = "black" ))
   }
   
   
@@ -619,12 +575,12 @@ final_plot_allphy <- wrap_plots(plots, ncol = 1, heights = c(1,2,1)) +
   )
 
 
-print(final_plot_allphy)
+#print(final_plot_allphy)
 
 
-figsupp1="~/results/Simulation/figures_review/figsupp1.jpeg"
+figsupp2=paste0(path,"/results/Simulation/figures_review/figsupp2.jpeg")
 ggsave(final_plot_allphy,
-       filename = figsupp1,
+       filename = figsupp2,
        device = "jpeg",
        width = 30,
        height = 20,
@@ -633,17 +589,28 @@ ggsave(final_plot_allphy,
        create.dir = TRUE)
 
 
-magick::image_read(figsupp1)
+magick::image_read(figsupp2)
 
-figsupp1svg="~/results/Simulation/figures_review/figsupp1.svg"
+figsupp2svg=paste0(path,"/results/Simulation/figures_review/figsupp2.svg")
 ggsave(final_plot_allphy,
-       filename = figsupp1svg,
+       filename = figsupp2svg,
        device = "svg",
        width = 30,
        height = 20,
        dpi = 600,
        units = "cm",
        create.dir = TRUE)
+
+
+figsupp2_tifname=paste0(path,"/results/Simulation/figures_review/tif/figsupp2.tiff")
+ggsave(final_plot_allphy,
+       filename = figsupp2_tifname,
+       device = "tiff",compression = "lzw",
+       width = 30, height = 20,
+       dpi = 600,
+       units = "cm",
+       create.dir = TRUE)
+
 
 tmp=summary_metrics_df[summary_metrics_df$taxlvl == "phylum" & summary_metrics_df$rt == "100r/t" & summary_metrics_df$percentage_human == "90",]
 result <- tmp %>%
@@ -777,30 +744,6 @@ final_plot <- wrap_plots(plots_reduced, ncol = 1) +
   )
 
 print(final_plot)
-
-fig5jpg="~/results/Simulation/figures_review/fig5.jpg"
-
-ggsave(final_plot,
-       filename = fig5jpg,
-       device = "jpeg",
-       width = 29.7,
-       height = 21,
-       dpi = 600,
-       units = "cm",
-       create.dir = TRUE)
-
-magick::image_read(fig5jpg)
-
-fig5svg="~/results/Simulation/figures_review/fig5.svg"
-
-ggsave(final_plot,
-  filename=fig5svg,
-  device = "svg",
-  width = 29.7,   
-  height = 21,  
-  units = "cm"
-)
-
 
 
 

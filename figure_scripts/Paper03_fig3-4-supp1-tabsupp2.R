@@ -4,6 +4,8 @@ sim_set="human_majority"
 load(paste0(path, 'data/Simulation/environnement_',sim_set,".RData"))
 
 
+
+
 palette <- c(
   "Blast" = "#1F78B4",      # Blue
   "SpadesBlast" = "#A6CEE3",
@@ -115,6 +117,34 @@ labels2lines <- c(
   # "Fulgor" = "- Fulgor -\n (Refseq Viruses ?)"
 )
 
+labels2lines <- c(
+  "Blast" = "Trinity-Blast¹",
+  "SpadesBlast" = "SPAdes-Blast¹",
+  
+  "Hybrid - Blast + Kraken2" =
+    "Trinity-Blast¹\n+ K2¹",
+  
+  "kraken2" = "K2¹",
+  
+  "Hybrid - Blast + KrakenUniq" =
+    "Trinity-Blast¹\n+ KUniq²",
+  
+  "kuniq" = "KUniq²",
+  
+  "Hybrid - KrakenUniq + Kraken2" =
+    "KUniq²\n+ K2¹",
+  
+  "Hybrid - Kraken2 + KrakenUniq" =
+    "K2¹\n+ KUniq²",
+  
+  # Hybrid spades
+  "hybrid_SpadesBlast-kraken2" =
+    "SPAdes-Blast¹\n+ K2¹",
+  
+  "hybrid_SpadesBlast-kuniq" =
+    "SPAdes-Blast¹\n+ KUniq²"
+)
+
 label_df=as.data.frame(labels2lines)
 label_df$method=rownames(label_df)
 
@@ -151,6 +181,50 @@ label_df$labels2lines <- factor(
 levels(label_df$method)
 levels(label_df$labels2lines)
 
+#_______________________________________________ Counting misclassified human
+### Unclassified per superkingdom ###
+misclassified_human=classifs_pair[classifs_pair$taxon_full_name_truth == "Eukaryota - Chordata" & 
+                                    classifs_pair$taxon_full_name != "Eukaryota - Chordata" & 
+                                    !classifs_pair$taxon_full_name %in% c("Unassembled","Unclassified") &
+                                    ! classifs_pair$method %in% c("Centrifuge","Centrifuger")
+                                  #& classifs_pair$Freq > 0,]
+                                  ,]
+
+misclassified_human_summarized=aggregate(Freq ~ total + taxon_full_name_truth + .id + method, misclassified_human, sum  )
+
+colnames(misclassified_human_summarized)[5] = "missclassif_human"
+#misclassified_human_summarized$prop_misclassif_human = misclassified_human_summarized$missclassif_human / misclassified_human_summarized$total
+
+
+misclassified_human_as_bact=misclassified_human[str_detect(misclassified_human$taxon_full_name, "Bacteria"),]
+misclassified_human_as_bact_summarized=aggregate(Freq ~ total + taxon_full_name_truth + .id + method, misclassified_human_as_bact, sum  )
+colnames(misclassified_human_as_bact_summarized)[5] = "missclassif_human_as_bact"
+
+
+
+misclassified_human_summarized=merge(misclassified_human_summarized,misclassified_human_as_bact_summarized)
+
+
+
+misclassif_bact=classifs_pair[classifs_pair$taxon_full_name %in% c("Bacteria - Bacteroidota", 
+                                                                   "Bacteria - Actinomycetota", 
+                                                                   "Bacteria - Pseudomonadota", 
+                                                                   "Bacteria - Bacillota") & 
+                                !str_detect(classifs_pair$method,"human"), ]
+
+misclassif_bact2=misclassif_bact[misclassif_bact$taxon_full_name_truth == "Eukaryota - Chordata",]
+total_from_human=aggregate(Freq ~ .id + taxon_full_name + method, misclassif_bact2, sum)
+colnames(total_from_human)[4] = "total_from_human"
+### Retrieve total predicted in each category
+total_pred=aggregate(Freq ~ .id + taxon_full_name + method, misclassif_bact, sum)
+colnames(total_pred)[4] = "total_pred_taxon"
+
+total_from_human=merge(total_from_human, total_pred)
+total_from_human$total_pred = (total_from_human$total_from_human / total_from_human$total_pred_taxon)*100
+
+
+
+#misclassified_human=misclassified_human[,c(1,10,5)]#misclassified_human=misclassified_human[,c(1,10,5)]sum()
 
 #_______________________________________________ Counting unclassified / TP / FP
 ### Unclassified per superkingdom ###
@@ -183,7 +257,8 @@ unclassified_sk=classifs_pair[classifs_pair$prop > 0,]
 unclassified_sk$classification=ifelse(unclassified_sk$taxon_full_name_truth == unclassified_sk$taxon_full_name , "TP", "FP")
 unclassified_sk$classification=ifelse(unclassified_sk$taxon_full_name %in% c("Unclassified","Unassembled") , 
                                       "U", unclassified_sk$classification)
-
+unclassified_sk$classification2=ifelse(unclassified_sk$taxon_full_name == "Unassembled" , 
+                                       "Unassembled", unclassified_sk$classification)
 
 # Aggregating classif at phylum
 tmp=unclassified_sk
@@ -200,7 +275,7 @@ tmp$label_truth=ifelse(tmp$classification == "FP" & tmp$taxon_full_name_truth ==
 unique(tmp[tmp$taxon_full_name == "Bacteria - Pseudomonadota",]$label_truth)
 
 
-freq=aggregate(Freq ~ .id + method + taxon_full_name + classification + prefiltering + label_truth , 
+freq=aggregate(Freq ~ .id + method + taxon_full_name + classification + classification2 + prefiltering + label_truth , 
                tmp , sum)
 
 tmp=unique(unclassified_sk[,c(1,2,3,10,11,13)])
@@ -209,7 +284,7 @@ unclassified_phylum=freq
 
 
 # Aggregating classif at Superkingdom level
-freq=aggregate(Freq ~ .id + method + superkingdom_truth + classification + prefiltering, unclassified_sk, sum)
+freq=aggregate(Freq ~ .id + method + superkingdom_truth + classification  + classification2 + prefiltering, unclassified_sk, sum)
 tmp=unique(unclassified_sk[,c(1,2,3,10,11,13)])
 total=aggregate(total ~ .id + superkingdom_truth + method + prefiltering , tmp, sum)
 
@@ -259,7 +334,10 @@ metrics_full$nrt=as.numeric(str_remove_all(metrics_full$rt, "r/t"))
 metrics_full$nrt=factor(as.character(metrics_full$nrt),levels = c("5","10","100"))
 
 
-metrics_full=merge(metrics_full, misclassified_human, by=c(".id","method"))
+misclassified_human_summarized$taxon_full_name_truth = NULL
+colnames(misclassified_human_summarized)[1]="total_human"
+
+metrics_full=merge(metrics_full, misclassified_human_summarized, by=c(".id","method"))
 
 
 ### Renaming method names
@@ -286,7 +364,7 @@ metrics_full_red$method = ifelse(metrics_full_red$method == "hybrid_kraken2-kuni
 print(unique(metrics_full_red$method))
 
 
-interesting_col=unique(metrics_full_red[,c(1,2,12,21,22,23,24)])
+interesting_col=unique(metrics_full_red[,c(1,2,12,21,22,23,24,26)])
 
 
 unclassified_phylum$method = ifelse(unclassified_phylum$method == "hybrid_Blast-kuniq", "Hybrid - Blast + KrakenUniq", unclassified_phylum$method)
@@ -300,7 +378,7 @@ unclassified_sk$method = ifelse(unclassified_sk$method == "hybrid_kuniq-kraken2"
 unclassified_sk$method = ifelse(unclassified_sk$method == "hybrid_kraken2-kuniq", "Hybrid - Kraken2 + KrakenUniq", unclassified_sk$method)
 
 
-unclassified_sk = merge(unclassified_sk, interesting_col, by=c(".id","method","prefiltering"))
+unclassified_sk = merge(unclassified_sk, interesting_col, by=c(".id","method"))
 unclassified_sk$classification=factor(unclassified_sk$classification, levels = rev(c("TP","FP","U")))
 unclassified_sk=merge(unclassified_sk, label_df, by = "method")
 
@@ -315,7 +393,7 @@ unclassified_human=unclassified_human[unclassified_human$classification != "TP" 
 
 
 ####
-unclassified_phylum = merge(unclassified_phylum, interesting_col, by=c(".id","method","prefiltering"))
+unclassified_phylum = merge(unclassified_phylum, interesting_col, by=c(".id","method"))
 unclassified_phylum$classification=factor(unclassified_phylum$classification, levels = rev(c("TP","FP","U")))
 unclassified_phylum=merge(unclassified_phylum, label_df, by = "method")
 unclassified_phylum$superkingdom_pred=sapply( unclassified_phylum$taxon_full_name, function(x){str_split(x, " - ")[[1]][1]} )
@@ -359,7 +437,7 @@ plot=ggplot(metrics_full_red[
     metrics_full_red$prefiltering == "No filter" &
     metrics_full_red$nrt == "100",] ,
   aes(x=labels2lines, y=F1, fill=method_nofactor, colour=method_nofactor))+#, position=phylum  ) +
-
+  
   geom_boxplot(outlier.size = .5 , width=.7, position = position_dodge(width = 0.75))+ #geom_jitter(color="black", size=0.4, alpha=0.9)+
   theme_linedraw()+
   xlab("Family of approaches")+ ylab("F1-score") +
@@ -377,7 +455,7 @@ plot=ggplot(metrics_full_red[
         axis.title.x= element_text(size = 12, face = "bold"),
         axis.text.x = element_text(size = 12),
         axis.text.y = element_text(size = 12),
-
+        
   )+
   #facet_nested_wrap(~ superkingdom + family_method, scales = "free_x", nrow = 1) +
   facet_grid( vars(nrt_label), vars(superkingdom), scales = "free_x")
@@ -388,7 +466,7 @@ plot
 
 ########________________________________________________________________________
 
-unclassified_global <- aggregate(cbind(Freq) ~ method + .id + classification + rt + nrt + nrt_label + labels2lines + Human_as_proteobact,
+unclassified_global <- aggregate(cbind(Freq) ~ method + .id + classification + classification2  + rt + nrt + nrt_label + labels2lines,
                                  unclassified_sk, sum)
 total_df=as.data.frame(list(
   ".id"=c("A","C","E","M","N","O","P","Q","R"),
@@ -404,14 +482,97 @@ theme_fig2=function(plot){
                       legend.key.size = unit(1, "cm"),
                       legend.key.width = unit(1,"cm"),
                       strip.background = element_rect(fill="#333333") , 
-                      strip.text = element_text(size = 7, face = "bold"),
-                      axis.title.y= element_text(size = 10, face = "bold"),
-                      axis.title.x= element_text(size = 10, face = "bold"),
-                      axis.text.x = element_text(size = 10),
-                      axis.text.y = element_text(size = 10 )))
+                      strip.text = element_text(size = 9, face = "bold"),
+                      axis.title.y= element_text(size = 12, face = "bold"),
+                      axis.title.x= element_text(size = 12, face = "bold"),
+                      axis.text.x = element_text(size = 12),
+                      axis.text.y = element_text(size = 12 )))
 }
 
-#______________________________________________________________________________# Table 2 - Mean F1 +/- sd
+#______________________________________________________________________________# fig supp
+total_from_human=merge(total_from_human, total_df)
+
+condition_df=as.data.frame(list(
+  ".id"=c("M","N","O","P","Q","R"),
+  "total"=c(333000,3330000 ,1665000,16650000,185000,1850000 ),
+  "nrt"=c(10,100,10,100,10,100),
+  "percentage_human"=c("50","50","90","90","10","10") ))
+
+
+total_from_human$method = ifelse(total_from_human$method == "hybrid_Blast-kuniq", "Hybrid - Blast + KrakenUniq", total_from_human$method)
+total_from_human$method = ifelse(total_from_human$method == "hybrid_Blast-kraken2", "Hybrid - Blast + Kraken2", total_from_human$method)
+total_from_human$method = ifelse(total_from_human$method == "hybrid_kuniq-kraken2", "Hybrid - KrakenUniq + Kraken2", total_from_human$method)
+total_from_human$method = ifelse(total_from_human$method == "hybrid_kraken2-kuniq", "Hybrid - Kraken2 + KrakenUniq", total_from_human$method)
+
+total_from_human=merge(total_from_human, label_df, by = "method")
+total_from_human=merge(total_from_human, condition_df)
+
+
+
+# total_from_human$label1line <- trimws(
+#   gsub("(^-\\s*|\\s*-$)", "", sub("\n.*", "", total_from_human$labels2lines))
+# )
+total_from_human$label1line <- str_replace(total_from_human$labels2lines, pattern = "\n", replacement = " ")
+
+
+end_labels <- total_from_human %>%
+  filter(nrt == 100) %>%
+  group_by(method, label1line, labels2lines, taxon_full_name) %>%
+  arrange(percentage_human) %>%
+  slice_tail(n = 1)
+
+#total_from_human$method
+unique(total_from_human$label1line)
+
+figsupp = ggplot(total_from_human[total_from_human$nrt==100,],
+                 aes(x=percentage_human, y=total_pred, colour=method)) + 
+  geom_point() +
+  geom_line(aes(group = label1line), linewidth = 0.65) +
+  ggrepel::geom_text_repel(
+    data = end_labels,
+    aes(label = label1line,
+        alpha = total_pred >= 1),
+    direction = "y",hjust = 0,nudge_x = 0.02,segment.color = NA  ) +
+  scale_alpha_manual(values = c("TRUE" = 1, "FALSE" = 0), guide = "none")+
+  scale_colour_manual(values = tinter::darken(palette, amount = 0.15), guide = "none") +
+  theme_linedraw() +
+  facet_wrap(~ taxon_full_name, scales="free") +  
+  xlab("Percentage of human sequences") + ylab("Percentage of human sequences among phylum-assigned reads")
+figsupp=theme_fig2(figsupp) +   theme(strip.text = element_text(size = 12))
+
+figsupp
+
+fig_jpgname=paste0(path,"/results/Simulation/figures_review/figsupp1.jpeg")
+ggsave(figsupp,
+       filename = fig_jpgname,
+       device = "jpeg",
+       width = 30,
+       height = 18,
+       dpi = 600,
+       units = "cm",
+       create.dir = TRUE)
+magick::image_read(fig_jpgname)
+
+fig_svgname=paste0(path,"/results/Simulation/figures_review/figsupp1.svg")
+ggsave(figsupp,
+       filename = fig_svgname,
+       device = svglite::svglite,
+       width = 30,   
+       height = 18,  
+       units = "cm" , 
+       dpi=600
+)
+
+
+fig_tifname=paste0(path,"/results/Simulation/figures_review/tif/figsupp1.tiff")
+ggsave(figsupp,
+       filename = fig_tifname,
+       device = ragg::agg_tiff,compression = "lzw",
+       width = 30, height = 18,
+       dpi = 600,
+       units = "cm",
+       create.dir = TRUE)
+#______________________________________________________________________________# Table supp2 - Mean F1 +/- sd
 
 # Aggregating results per median F1
 metrics = metrics_full_red[metrics_full_red$.id == "P" & metrics_full_red$prefiltering == "No filter", ]
@@ -493,7 +654,7 @@ heat = theme_fig2(heat) +
 
 heat
 
-# ggsave(heat,filename=paste0("~/results/Simulation/with_replacement/figures/heatmap_precision_filtering.jpeg"),
+# ggsave(heat,filename=paste0(path,"/results/Simulation/with_replacement/figures/heatmap_precision_filtering.jpeg"),
 #        device = "jpeg",width = 40, height = 32,dpi = 350 , units = "cm", create.dir = TRUE)
 
 
@@ -506,8 +667,8 @@ pivoted_range$superkingdom = factor(pivoted_range$superkingdom, levels=c("Bacter
 
 
 
-write.table(df_range[,c(1,3,4,5,6,7,8)], file = "~/results/Simulation/figures_review/table2_data_reviews.tsv",
-           quote=FALSE, row.names=FALSE,sep="\t")
+write.table(df_range[,c(1,3,4,5,6,7,8)], file = paste0(path,"/results/Simulation/figures_review/tabsupp2.tsv"),
+            quote=FALSE, row.names=FALSE,sep="\t")
 
 
 #______________________________________________________________________________# Figure  4
@@ -547,15 +708,23 @@ unclassified_90_reduced$label=factor(unclassified_90_reduced$label,
                                      levels=c(
                                        "non Human.U","Human.U","non Human.FP","Human.FP","non Human.TP","Human.TP"))
 
+unclassified_90_reduced$label2=interaction(unclassified_90_reduced$human_label,unclassified_90_reduced$classification2)
+
+unclassified_90_reduced$label2=factor(unclassified_90_reduced$label2, 
+                                      levels=c(
+                                        "non Human.Unassembled","Human.Unassembled", 
+                                        "non Human.U",  "Human.U",
+                                        "non Human.FP", "Human.FP",
+                                        "non Human.TP", "Human.TP"))
+
 
 unclassified_90_reduced$sk_category=ifelse(unclassified_90_reduced$superkingdom_truth == "Homo sapiens","Homo sapiens", "non-human")
 
-test=aggregate(freq_total ~ .id + method+sk_category+classification+labels2lines+family_method+total+percentage_human+human_label+label ,
-               
+test=aggregate(freq_total ~ .id + method+sk_category+classification+classification2+labels2lines+family_method+total+percentage_human+human_label+label+label2 ,
                unclassified_90_reduced[unclassified_90_reduced$nrt==100,], sum)
 
 fig4=ggplot(unclassified_90_reduced[unclassified_90_reduced$method != "Centrifuge" , ],
-                    aes(x=as.character(percentage_human), y=freq_total, fill=label )) +
+            aes(x=as.character(percentage_human), y=freq_total, fill=label )) +
   geom_bar(position="stack", stat="identity", width=.75) + 
   
   geom_hline(yintercept = c(0.1,0.5,0.9), linetype="dashed", alpha=.4)+
@@ -597,9 +766,112 @@ fig4=ggplot(unclassified_90_reduced[unclassified_90_reduced$method != "Centrifug
   ) + 
   facet_nested(cols = vars(family_method, labels2lines), 
                rows=vars(human_label), scales="free")
-#fig4
+fig4
 
-fig4_jpgname="~/results/Simulation/figures_review/fig4.jpeg"
+
+# (optional but strongly recommended cleanup)
+unclassified_90_reduced$label2 <- trimws(unclassified_90_reduced$label2)
+
+unclassified_90_reduced$label2=factor(unclassified_90_reduced$label2, levels=c(
+  "non Human.Unassembled", "Human.Unassembled",
+  "non Human.U",   "Human.U",
+  "non Human.FP" , "Human.FP" ,
+  "non Human.TP",  "Human.TP"
+  ))
+
+unique(unclassified_90_reduced$label2)
+
+fig4 <- ggplot(
+  unclassified_90_reduced[unclassified_90_reduced$method != "Centrifuge", ],
+  aes(x = as.character(percentage_human),y = freq_total,
+      fill = label2,pattern = label2 ) ) +
+  ggpattern::geom_col_pattern(
+    width = 0.75,
+    stat = "identity",
+    pattern_fill = "white",
+    pattern_colour = "black",
+    pattern_size = 0.2,
+    pattern_density = 0.35,
+    pattern_spacing = 0.08,
+    pattern_angle = 45
+  )+
+  
+  geom_hline(yintercept = c(0.1, 0.5, 0.9),
+             linetype = "dashed",
+             alpha = 0.4) +
+  
+  theme_linedraw() +
+  xlab("Percentage of human sequences") +
+  ylab("Sequence classification proportion") +
+  scale_y_continuous(breaks = c(0.1, 0.3, 0.5, 0.7, 0.9)  ) +
+  scale_fill_manual(
+    values=c(
+      "Human.Unassembled"="#D98B00",
+      "Human.U"="#D98B00",
+      "Human.FP"="#6E0000",  
+      "Human.TP"="#005A8D",  
+      
+      "non Human.Unassembled"="#FFB462",
+      "non Human.U"="#FFB462",
+      "non Human.FP"="#B12424",
+      "non Human.TP"="#7AADD0") ,
+    
+    labels = c(
+      "Human.Unassembled"="Unassembled Human",
+      "Human.U"="Unclassified Human", 
+      "Human.FP"="Misclassified Human", 
+      "Human.TP"="Correctly predicted Human",
+      "non Human.Unassembled"= "Other Unassembled",
+      "non Human.U"="Other Unclassified", 
+      "non Human.FP"="Other False prediction", 
+      "non Human.TP"="Other True Prediction"
+    ),
+    name="" )+
+  ggpattern::scale_pattern_manual(
+    values = c(
+      "Human.Unassembled" = "stripe",
+      "Human.U" = "none",
+      "Human.FP" = "none",
+      "Human.TP" = "none",
+
+      "non Human.Unassembled" = "stripe",
+      "non Human.U" = "none",
+      "non Human.FP" = "none",
+      "non Human.TP" = "none" ), name = "" ) +
+  guides(
+    pattern = "none",
+    fill = guide_legend(
+      override.aes = list(
+        pattern = c("stripe", "stripe", rep("none", 6)),
+        pattern_key_scale_factor=.5,
+        pattern_fill = "white",
+        pattern_colour = "black",
+        pattern_density = c(0.35, 0.35, rep(0, 6)),
+        pattern_spacing = 0.08,
+        pattern_angle = 45))) +
+  
+  theme(
+    legend.position = "bottom",
+    legend.direction = "horizontal",
+    legend.key.size = unit(1, "cm"),
+    legend.key.width = unit(1, "cm"),
+    strip.background = element_rect(fill = "#333333"),
+    legend.text = element_text(size = 9, face = "bold"),
+    strip.text = element_text(size = 8.5, face = "bold"),
+    axis.title.y = element_text(size = 12, face = "bold"),
+    axis.text.x = element_text(size = 12),
+    axis.title.x = element_text(size = 12, face = "bold"),
+    axis.text.y = element_text(size = 12)) +
+  facet_nested(
+    cols = vars(family_method, labels2lines),
+    rows = vars(human_label),
+    scales = "free" )
+
+fig4
+
+
+
+fig4_jpgname=paste0(path,"/results/Simulation/figures_review/fig4.jpeg")
 ggsave(fig4,
        filename = fig4_jpgname,
        device = "jpeg",
@@ -610,17 +882,25 @@ ggsave(fig4,
        create.dir = TRUE)
 magick::image_read(fig4_jpgname)
 
-fig4_svgname="~/results/Simulation/figures_review/fig4.svg"
+fig4_svgname=paste0(path,"/results/Simulation/figures_review/fig4.svg")
 ggsave(fig4,
-  filename = fig4_svgname,
-  device = "svg",
-  width = 30,   
-  height = 18,  
-  units = "cm" , 
-  dpi=600
+       filename = fig4_svgname,
+       device = svglite::svglite,
+       width = 30,   
+       height = 18,  
+       units = "cm" , 
+       dpi=600
 )
-      
 
+
+fig4_tifname=paste0(path,"/results/Simulation/figures_review/tif/fig4.tiff")
+ggsave(fig4,
+       filename = fig4_tifname,
+       device = ragg::agg_tiff,compression = "lzw",
+       width = 30, height = 18,
+       dpi = 600,
+       units = "cm",
+       create.dir = TRUE)
 
 ################################################################################
 ### --------------------------------------------------------------------- Figure 3
@@ -645,9 +925,11 @@ dix_df=metrics_full_red[metrics_full_red$percentage_human == 10 &
 colnames(dix_df)[9:14]=paste0(colnames(dix_df)[9:14],"_10")
 colnames(nonente_df)[9:14]=paste0(colnames(nonente_df)[9:14],"_90")
 
+# intersect(c("method","phylum","replicate_number") , colnames(nonente_df))
+# intersect(c("method","phylum","replicate_number") , colnames(dix_df[,c(3,6,9:14, 32, 34)]))
 
+decrease_df=merge(nonente_df, dix_df[,c(3,6,9:14, 32,34)], by=c("method","phylum","replicate_number") )
 
-decrease_df=merge(nonente_df, dix_df[,c(3,6,9:14, 32)], by=c("method","phylum","replicate_number") )
 decrease_df$decrease_precision=decrease_df$Precision_90 - decrease_df$Precision_10
 decrease_df$decrease_F1=decrease_df$F1_90 - decrease_df$F1_10
 decrease_df$decrease_recall=decrease_df$Recall_90 - decrease_df$Recall_10
@@ -751,15 +1033,15 @@ meandecrease_dotplot=theme_fig2(meandecrease_dotplot) +
 meandecrease_dotplot
 
 fig3 <- cowplot::plot_grid(
-  human_upperpoint_pre + theme(strip.text = element_text(size=6.25)),
-  meandecrease_dotplot+ theme(strip.text = element_text(size=10)),
+  human_upperpoint_pre, #+ theme(strip.text = element_text(size=6.25)),
+  meandecrease_dotplot ,#+ theme(strip.text = element_text(size=10)),
   ncol = 1,
   labels = c("A", "B") , 
   rel_heights = c(.55,.45)
 )
 
 fig3
-fig3_jpgname="~/results/Simulation/figures_review/fig3.jpeg"
+fig3_jpgname=paste0(path,"/results/Simulation/figures_review/fig3.jpeg")
 ggsave(fig3,
        filename = fig3_jpgname,
        device = "jpeg",
@@ -771,7 +1053,7 @@ ggsave(fig3,
 magick::image_read(fig3_jpgname)
 
 
-fig3_svgname="~/results/Simulation/figures_review/fig3.svg"
+fig3_svgname=paste0(path,"/results/Simulation/figures_review/fig3.svg")
 ggsave(fig3,
        filename = fig3_svgname,
        device = "svg",
@@ -780,3 +1062,13 @@ ggsave(fig3,
        units = "cm" , 
        dpi=600
 )
+
+fig3_tifname=paste0(path,"/results/Simulation/figures_review/tif/fig3.tiff")
+ggsave(fig3,
+       filename = fig3_tifname,
+       device = "tiff",compression = "lzw",
+       width = 30, height = 20,
+       dpi = 600,
+       units = "cm",
+       create.dir = TRUE)
+

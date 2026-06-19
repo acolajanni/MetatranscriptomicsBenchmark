@@ -65,6 +65,31 @@ labels2lines <- c(
   "ku-k2" = "- KUniq-K2 -\nmicrobialDB + nt",
   "k2-ku" = "- K2-KUniq -\nnt + microbialDB")
 
+
+labels2lines <- c(
+  # Contig solo
+  "TrinityBlast" = "Trinity-Blast¹",
+  "SpadesBlast" = "SPAdes-Blast¹",
+  
+  # Kmer solo
+  "kuniq"   = "KUniq²",
+  "kraken2" = "K2¹",
+
+  # Hybrid Trinity
+  "hybrid_TrinityBlast-kraken2" = "Trinity-Blast¹\n+ K2¹",
+  "hybrid_TrinityBlast-kuniq"   = "Trinity-Blast¹\n+ KUniq²",
+  
+  # Hybrid spades
+  "hybrid_SpadesBlast-kraken2" = "SPAdes-Blast¹\n+ K2¹",
+  "hybrid_SpadesBlast-kuniq"   = "SPAdes-Blast¹\n+ KUniq²",
+  
+  # Combined Kmer
+  "ku-k2" = "KUniq²\n+ K2¹",
+  "k2-ku" = "K2¹\n+ KUniq²"
+  
+  
+)
+
 palette <- c(
   "TrinityBlast" = "#E3D7EB",      # Blue
   "SpadesBlast" = "#FDD9A0",
@@ -122,17 +147,21 @@ label_df=merge(label_key,label_df, by="method_label")
 
 label_df$family_method = factor(label_df$family_method, levels = c("Assembly-based", "Assembly-free" ,"Hybrid", "Combined assembly-free") )
 
-label_df$labels2lines = factor(label_df$labels2lines, levels = c("- Trinity-Blast -\nnt " ,
-                                                                 "- SPAdes-Blast -\nnt " ,
-                                                                 "- K2 -\nnt",
-                                                                 "- KUniq -\nmicrobialDB"  ,
-                                                                 "- Hybrid-Trinity-K2 -\nnt",
-                                                                 "- Hybrid-SPAdes-K2 -\nnt",
-                                                                 "- Hybrid-Trinity-KUniq -\nnt + microbialDB",
-                                                                 "- Hybrid-SPAdes-KUniq -\nnt + microbialDB" ,
-                                                                 "- K2-KUniq -\nnt + microbialDB",
-                                                                 "- KUniq-K2 -\nmicrobialDB + nt"))
-
+label_df$labels2lines <- factor(
+  label_df$labels2lines,
+  levels = c(
+    "Trinity-Blast¹",
+    "SPAdes-Blast¹",
+    "K2¹",
+    "KUniq²",
+    "Trinity-Blast¹\n+ K2¹",
+    "SPAdes-Blast¹\n+ K2¹",
+    "Trinity-Blast¹\n+ KUniq²",
+    "SPAdes-Blast¹\n+ KUniq²",
+    "K2¹\n+ KUniq²",
+    "KUniq²\n+ K2¹"
+  )
+)
 
 theme_fig2=function(plot){
   return(plot + theme(legend.direction = "horizontal",legend.position = "bottom",
@@ -142,7 +171,7 @@ theme_fig2=function(plot){
                       strip.text = element_text(size = 12, face = "bold"),
                       axis.title.y= element_text(size = 12, face = "bold"),
                       axis.title.x= element_text(size = 12, face = "bold"),
-                      axis.text.x = element_text(size = 12),
+                      axis.text.x = element_text(size = 10),
                       axis.text.y = element_text(size = 10 )))
 }
 
@@ -176,9 +205,7 @@ get_metrics_right_format_all_ranks=function(metrics_list, method, rt){
 
 path="~/"
 
-#path = path_local
 
-#setwd("/home/acolajanni/Documents/work/")
 
 # simulation_letter = args[1]
 # path_results = args[2]
@@ -1048,14 +1075,26 @@ genus_count2$metric_label=ifelse(genus_count2$metric == "TP", "True positive gen
 genus_count2$metric_label = factor(genus_count2$metric_label, levels=c("True positive genus","False positive genus","Missing genus") )
 
 
-genus_count2$labels2lines = factor(genus_count2$labels2lines, levels = c(
-  "- Ground Truth -"  ,
-  "- Trinity-Blast -\nnt " ,
-  "- SPAdes-Blast -\nnt " ,
-  "- KUniq -\nmicrobialDB"  ,
-  "- Hybrid-Trinity-KUniq -\nnt + microbialDB",
-  "- Hybrid-SPAdes-KUniq -\nnt + microbialDB" ,
-  "- KUniq-K2 -\nmicrobialDB + nt"))
+genus_count2
+
+
+genus_count2$labels2lines = ifelse(genus_count2$labels2lines == "- Ground Truth -","Ground Truth",genus_count2$labels2lines  ) 
+
+genus_count2$labels2lines <- factor(genus_count2$labels2lines,
+  levels = c(
+    "Ground Truth",
+    "Trinity-Blast¹",
+    "SPAdes-Blast¹",
+    "KUniq²",
+    "Trinity-Blast¹\n+ KUniq²",
+    "SPAdes-Blast¹\n+ KUniq²",
+    "KUniq²\n+ K2¹" ))
+
+
+genus_count2$family_method = ifelse(genus_count2$family_method == "Combined assembly-free" , "Combined\nassembly-free" , as.character(genus_count2$family_method) )
+
+genus_count2$family_method = factor(genus_count2$family_method, levels=c(" ","Assembly-based","Assembly-free", "Hybrid", "Combined\nassembly-free"))
+
 
 
 p=ggplot(genus_count2, aes(x=threshold, y=value, fill = method_label,color=method_label)) + 
@@ -1095,27 +1134,34 @@ p=ggplot(genus_count2[!genus_count2$threshold %in% c("1","5"),], aes(x=threshold
 p10 = theme_fig2(p)
 p10
 
-supp2jpeg="~/results/Simulation/figures_review/figsupp2.jpeg"
-ggsave(p9,filename=supp2jpeg,
+supp4jpeg=paste0(path,"/results/Simulation/figures_review/figsupp4.jpeg")
+ggsave(p9,filename=supp4jpeg,
        device = "jpeg",width = 30, height = 20,dpi = 350 , units = "cm", create.dir = TRUE)
 
-magick::image_read(supp2jpeg)
+magick::image_read(supp4jpeg)
 
-fig6jpeg="~/results/Simulation/figures_review/fig6.jpeg"
-ggsave(p10,filename=fig6jpeg,
+supp3jpeg=paste0(path,"/results/Simulation/figures_review/figsupp3.jpeg")
+ggsave(p10,filename=supp3jpeg,
        device = "jpeg",width = 30, height = 20,dpi = 350 , units = "cm", create.dir = TRUE)
 
 
-magick::image_read(fig6jpeg)
+magick::image_read(supp3jpeg)
 
+supp2tif=paste0(path,"/results/Simulation/figures_review/figsupp4.tif")
+ggsave(p9,filename=supp2tif,
+       device = ragg::agg_tiff,compression = "lzw",
+       width = 30, height = 20,
+       dpi = 600,
+       units = "cm",
+       create.dir = TRUE)
 
-supp2jsvg="~/results/Simulation/figures_review/figsupp2.svg"
-ggsave(p9,filename=supp2jsvg,
-       device = "svg",width = 30, height = 20,dpi = 600 , units = "cm", create.dir = TRUE)
-
-fig6svg="~/results/Simulation/figures_review/fig6.svg"
-ggsave(p10,filename=fig6svg,
-       device = "svg",width = 30, height = 20,dpi = 600 , units = "cm", create.dir = TRUE)
+supp3tif=paste0(path,"/results/Simulation/figures_review/figsupp3.tif")
+ggsave(p10,filename=supp3tif,
+       device = ragg::agg_tiff,compression = "lzw",
+       width = 30, height = 20,
+       dpi = 600,
+       units = "cm",
+       create.dir = TRUE)
 
 
 

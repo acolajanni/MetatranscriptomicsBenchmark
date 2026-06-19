@@ -716,7 +716,6 @@ lasso_bootstrap_selection=function(X, y , n_boot=500, ncores=12){
 ### V A R I A B L E S ###
 dataset="Douek_Cleveland"
 path = "~/"
-path="/home/acolajanni/Documents/work/"
 print(dataset)
 
 path_result=paste0(path,"/results/",dataset)
@@ -1703,15 +1702,15 @@ final_cowplot2 = cowplot::plot_grid(
 
 
 
-fig8 = cowplot::plot_grid(
+fig7 = cowplot::plot_grid(
   final_cowplot2 , box_full , nrow=2, 
   label_size = 12, labels = c("A", "B"),  
   rel_heights = c(.5,.5))
 
 size_factor= 1
 
- ggsave(fig8,
-        filename=paste0(path,"results/Simulation/figures_review/fig8.tiff"),
+ ggsave(fig7,
+        filename=paste0(path,"results/Simulation/figures_review/fig7.tiff"),
         device = "tiff",compression = "lzw",
         width = 20*size_factor,
         height = 29*size_factor,
@@ -1720,7 +1719,7 @@ size_factor= 1
         create.dir = TRUE)
  
  
- fig8
+ fig7
 
 ```
 

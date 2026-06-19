@@ -1,17 +1,12 @@
 library(ggh4x)
-
+library(ggpattern)
 
 path="~/"
+
 sim_set="sequencing_depth"
 load(paste0(path, 'data/Simulation/environnement_',sim_set,".RData"))
 
 
-
-
-#colorRampPalette(c("#FDBF6F","#E66F00"))(3)
-c("#FDBF6F", "#F19737" ,"#E66F00")
-colorRampPalette(c("#CAB2D6","#6A3D9A"))(3)
-c("#CAB2D6", "#AF8BCC", "#9464C2" ,"#7A3DB8")
 
 palette <- c(
   "Blast" = "#E3D7EB",                        
@@ -56,6 +51,9 @@ labels <- c(
   "kuniq" = "Kmer-based (Krakenuniq - microbialDB database)",
   "Hybrid - KrakenUniq + Kraken2" = "Kmer-based (KrakenUniq + Kraken2)",
   "Hybrid - Kraken2 + KrakenUniq" = "Kmer-based (Kraken2 + KrakenUniq)",
+  # "Centrifuge" = "- Centrifuge - \n(nt)" ,
+  # "Centrifuger" = "- Centrifuger - \n(RefSeq Bacteria-Viruses)" ,
+  
   # Hybrid spades
   "hybrid_SpadesBlast-kraken2" =   "- Hybrid-Spades-K2 -\n(nt)",
   "hybrid_SpadesBlast-kuniq"=  "- Hybrid-Spades-KUniq -\n(nt + microbialDB)"
@@ -74,13 +72,38 @@ labels2lines <- c(
   
   "Hybrid - KrakenUniq + Kraken2" = "- KUniq-K2 -\n(microbialDB + nt)",
   "Hybrid - Kraken2 + KrakenUniq" = "- K2-KUniq -\n(nt + microbialDB)",
-
+  
   # Hybrid spades
   "hybrid_SpadesBlast-kraken2" =    "- Hybrid-SPAdes-K2 -\nnt",
   "hybrid_SpadesBlast-kuniq"=  "- Hybrid-SPAdes-KUniq -\nnt + microbialDB"
-  # "Fulgor" = "- Fulgor -\n (Refseq Viruses ?)"
 )
-
+labels2lines <- c(
+  "Blast" = "Trinity-Blast¹",
+  "SpadesBlast" = "SPAdes-Blast¹",
+  
+  "Hybrid - Blast + Kraken2" =
+    "Trinity-Blast¹\n+ K2¹",
+  
+  "kraken2" = "K2¹",
+  
+  "Hybrid - Blast + KrakenUniq" =
+    "Trinity-Blast¹\n+ KUniq²",
+  
+  "kuniq" = "KUniq²",
+  
+  "Hybrid - KrakenUniq + Kraken2" =
+    "KUniq²\n+ K2¹",
+  
+  "Hybrid - Kraken2 + KrakenUniq" =
+    "K2¹\n+ KUniq²",
+  
+  # Hybrid spades
+  "hybrid_SpadesBlast-kraken2" =
+    "SPAdes-Blast¹\n+ K2¹",
+  
+  "hybrid_SpadesBlast-kuniq" =
+    "SPAdes-Blast¹\n+ KUniq²"
+)
 label_df=as.data.frame(labels2lines)
 label_df$method=rownames(label_df)
 
@@ -152,7 +175,8 @@ unclassified_sk=classifs_pair[classifs_pair$prop > 0,]
 unclassified_sk$classification=ifelse(unclassified_sk$taxon_full_name_truth == unclassified_sk$taxon_full_name , "TP", "FP")
 unclassified_sk$classification=ifelse(unclassified_sk$taxon_full_name %in% c("Unclassified","Unassembled") , 
                                       "U", unclassified_sk$classification)
-
+unclassified_sk$classification2=ifelse(unclassified_sk$taxon_full_name == "Unassembled" , 
+                                       "Unassembled", unclassified_sk$classification)
 
 # Aggregating classif at phylum
 tmp=unclassified_sk
@@ -169,8 +193,10 @@ tmp$label_truth=ifelse(tmp$classification == "FP" & tmp$taxon_full_name_truth ==
 unique(tmp[tmp$taxon_full_name == "Bacteria - Pseudomonadota",]$label_truth)
 
 
-freq=aggregate(Freq ~ .id + method + taxon_full_name + classification + prefiltering + label_truth , 
+freq=aggregate(Freq ~ .id + method + taxon_full_name + classification +  prefiltering + label_truth + classification2 , 
                tmp , sum)
+
+#colnames(unclassified_sk)[c(1,2,3,10,11,13)]
 
 tmp=unique(unclassified_sk[,c(1,2,3,10,11,13)])
 total=aggregate(total ~ .id + taxon_full_name_truth + method + prefiltering , tmp, sum)
@@ -178,7 +204,7 @@ unclassified_phylum=freq
 
 
 # Aggregating classif at Superkingdom level
-freq=aggregate(Freq ~ .id + method + superkingdom_truth + classification + prefiltering, unclassified_sk, sum)
+freq=aggregate(Freq ~ .id + method + superkingdom_truth + classification + prefiltering + classification2, unclassified_sk, sum)
 tmp=unique(unclassified_sk[,c(1,2,3,10,11,13)])
 total=aggregate(total ~ .id + superkingdom_truth + method + prefiltering , tmp, sum)
 
@@ -357,7 +383,7 @@ plot
 
 ########________________________________________________________________________
 
-unclassified_global <- aggregate(cbind(Freq) ~ method + .id + classification + rt + nrt + nrt_label + labels2lines + Human_as_proteobact + family_method,
+unclassified_global <- aggregate(cbind(Freq) ~ method + .id + classification + classification2 + rt + nrt + nrt_label + labels2lines + Human_as_proteobact + family_method,
                                  unclassified_sk, sum)
 total_df=as.data.frame(list(
   ".id"=c("A","C","E","M","N","O","P","Q","R"),
@@ -389,11 +415,11 @@ theme_fig2=function(plot){
                       legend.key.size = unit(1, "cm"),
                       legend.key.width = unit(1,"cm"),
                       strip.background = element_rect(fill="#333333") , 
-                      strip.text = element_text(size = 7, face = "bold"),
-                      axis.title.y= element_text(size = 10, face = "bold"),
-                      axis.title.x= element_text(size = 10, face = "bold"),
-                      axis.text.x = element_text(size = 10),
-                      axis.text.y = element_text(size = 10 )))
+                      strip.text = element_text(size = 9, face = "bold"),
+                      axis.title.y= element_text(size = 12, face = "bold"),
+                      axis.title.x= element_text(size = 12, face = "bold"),
+                      axis.text.x = element_text(size = 12),
+                      axis.text.y = element_text(size = 12 )))
 }
 
 
@@ -423,9 +449,9 @@ under_firstplotCD=ggplot(unclassified_global[unclassified_global$family_method =
   geom_bar(stat = "identity") + 
   xlab("Reads Simulated per transcripts")+ ylab("") +
   scale_fill_manual(values=c(
-    "U"="#FFB462", "FP"= "#B12424", "TP"="#7AADD0"),
+    "Unassembled" =  "orangered", "U"="#FFB462", "FP"= "#B12424", "TP"="#7AADD0"),
     labels = c(
-      "Unclassified", "False prediction", "True Prediction"),
+      "Unassembled" , "Unclassified", "False prediction", "True Prediction"),
     name="" )+
   theme_linedraw() +   guides(fill="none", color="none")+
   facet_nested_wrap(vars(family_method, labels2lines), nrow=1)
@@ -510,6 +536,8 @@ upper_firstplot=theme_fig2(upper_firstplot)
 upper_firstplot
 
 
+
+
 under_firstplot=ggplot(unclassified_global,
                        aes(x=nrt, y=prop, fill=classification))+
   geom_bar(stat = "identity") + 
@@ -529,18 +557,62 @@ under_firstplot=theme_fig2(under_firstplot) +
 under_firstplot
 
 
+unclassified_global$classification2=factor(unclassified_global$classification2, levels=rev(c("TP","FP","U","Unassembled")))
+
+
+under_firstplot2 = ggplot(unclassified_global,
+                          aes(x = nrt, y = prop,
+                              fill = classification2,
+                              pattern = classification2)) +
+  ggpattern::geom_bar_pattern(
+    stat = "identity",
+    #pattern = "stripe",
+    pattern_fill = "white",     # white stripes
+    pattern_colour = "black",   # thin black border
+    pattern_size = 0.2,         # border thickness (thin)
+    pattern_density = 0.5,      # 50% white / 50% orange
+    pattern_spacing = 0.08,     # adjust for stripe width
+    pattern_angle = 45          # or 0 for vertical
+  ) +
+  xlab("Reads Simulated per transcripts") +
+  ylab("Proportion of sequence") +
+  scale_fill_manual(values = c(
+    "Unassembled" = "#FFB462","U" = "#FFB462",
+    "FP" = "#B12424","TP" = "#7AADD0" ),
+    labels = c(
+      "Unassembled      ", "Unclassified      ", "False prediction        ", "True Prediction"),
+    name = "") +
+  
+  ggpattern::scale_pattern_manual(
+    values = c("Unassembled" = "stripe","U" = "none","FP" = "none","TP" = "none"),
+    name = ""  )+
+  guides(pattern = "none", fill = guide_legend( override.aes = list(
+    pattern = c("stripe", "none", "none", "none"),
+    pattern_fill = c("white", NA, NA, NA),
+    pattern_colour = c("black", NA, NA, NA),
+    pattern_density = c(0.35, 0, 0, 0),
+    pattern_spacing = c(0.08, 0, 0, 0)
+  )))+ 
+  theme_linedraw() +
+  facet_nested_wrap(vars(family_method, labels2lines), nrow = 1)
+under_firstplot2=theme_fig2(under_firstplot2) + 
+  theme(legend.text = element_text(size=12, face="bold"))
+under_firstplot2 + theme(legend.key.size = unit(1.2, "cm"))
+
+
+
 
 final_plot=cowplot::plot_grid(
   upper_firstplot + theme(legend.position = "none", axis.text.x=element_blank(),
-                          strip.text = element_text(size=6.25)),
-  under_firstplot + theme(strip.text = element_text(size=6.25)),
+                          strip.text = element_text(size=9)),
+  under_firstplot2 + theme(strip.text = element_text(size=9)),
   ncol = 1,
   labels = c("A", "B") )
 
 
 
 final_plot
-fig2_jpgname="~/results/Simulation/figures_review/fig2.jpeg"
+fig2_jpgname=paste0(path,"/results/Simulation/figures_review/fig2.jpeg")
 ggsave(final_plot,
        filename=fig2_jpgname,
        device = "jpeg",width = 30, height = 20,dpi = 350 , units = "cm", create.dir = TRUE)
@@ -549,7 +621,7 @@ magick::image_read(fig2_jpgname)
 
 
 
-fig2_svgname="~/results/Simulation/figures_review/fig2.svg"
+fig2_svgname=paste0(path,"/results/Simulation/figures_review/fig2.svg")
 ggsave(final_plot,
        filename = fig2_svgname,
        device = "svg",
@@ -559,4 +631,11 @@ ggsave(final_plot,
        units = "cm",
        create.dir = TRUE)
 
-
+fig2_tifname=paste0(path,"/results/Simulation/figures_review/tif/fig2.tiff")
+ggsave(final_plot,
+       filename = fig2_tifname,
+       device = "tiff",compression = "lzw",
+       width = 30, height = 20,
+       dpi = 600,
+       units = "cm",
+       create.dir = TRUE)
