@@ -1075,7 +1075,17 @@ genus_count2$metric_label=ifelse(genus_count2$metric == "TP", "True positive gen
 genus_count2$metric_label = factor(genus_count2$metric_label, levels=c("True positive genus","False positive genus","Missing genus") )
 
 
-genus_count2
+theme_fig2=function(plot){
+  return(plot + theme(legend.direction = "horizontal",legend.position = "bottom",
+                      legend.key.size = unit(1, "cm"),
+                      legend.key.width = unit(1,"cm"),
+                      strip.background = element_rect(fill="#333333") , 
+                      strip.text = element_text(size = 12, face = "bold"),
+                      axis.title.y= element_text(size = 12, face = "bold"),
+                      axis.title.x= element_text(size = 12, face = "bold"),
+                      axis.text.x = element_text(size = 10),
+                      axis.text.y = element_text(size = 10 )))
+}
 
 
 genus_count2$labels2lines = ifelse(genus_count2$labels2lines == "- Ground Truth -","Ground Truth",genus_count2$labels2lines  ) 

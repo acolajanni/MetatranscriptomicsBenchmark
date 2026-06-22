@@ -482,7 +482,8 @@ names(fill)=label_df$labels2lines
 
 summary_metrics_df$phylum = ifelse(summary_metrics_df$phylum == "Thermodesulfobacteriota", 
                                    "Thermodesulfo-\nbacteriota", summary_metrics_df$phylum)
-
+summary_metrics_df$phylum = ifelse(summary_metrics_df$phylum == "Euryarchaeota", 
+                                   "Eury-\narchaeota", summary_metrics_df$phylum)
 ########### change size:
 
 plots <- lapply(c("Bacteria", "Viruses","Eukaryota"), function(sk) {
@@ -525,7 +526,7 @@ plots <- lapply(c("Bacteria", "Viruses","Eukaryota"), function(sk) {
       strip.background = element_rect(fill = "#333333"),
       panel.background = element_rect(fill = "#FFFFFF"),
       legend.text = element_text(size = 9, face = "bold"),
-      strip.text = element_text(size = 10, face = "bold"),
+      strip.text = element_text(size = 7.75, face = "bold"),
       axis.title.y = element_text(size = 9, face = "bold"),
       axis.title.x = element_text(size = 9, face = "bold"),
       axis.text.y = element_text(size = 9),
@@ -555,7 +556,7 @@ plots[[1]] <- plots[[1]] + theme(plot.margin = unit(c(0, .2, 0 , .2), "cm"))  # 
 plots[[2]] <- plots[[2]] + theme(plot.margin = unit(c(-0.25, 0.2, -0.25, .2), "cm"))
 plots[[3]] <- plots[[3]] + theme(plot.margin = unit(c(0, .2, 0, .2), "cm"))
 
-final_plot_allphy <- wrap_plots(plots, ncol = 1, heights = c(1,2,1)) + 
+final_plot_allphy <- wrap_plots(plots, ncol = 1, heights = c(1,2.5,1)) + 
   plot_layout(guides = "collect") +
   plot_annotation(
     tag_levels = "A",
@@ -582,8 +583,8 @@ figsupp2=paste0(path,"/results/Simulation/figures_review/figsupp2.jpeg")
 ggsave(final_plot_allphy,
        filename = figsupp2,
        device = "jpeg",
-       width = 30,
-       height = 20,
+       width = 21,
+       height = 25,
        dpi = 600,
        units = "cm",
        create.dir = TRUE)
@@ -595,8 +596,8 @@ figsupp2svg=paste0(path,"/results/Simulation/figures_review/figsupp2.svg")
 ggsave(final_plot_allphy,
        filename = figsupp2svg,
        device = "svg",
-       width = 30,
-       height = 20,
+       width = 21,
+       height = 25,
        dpi = 600,
        units = "cm",
        create.dir = TRUE)
@@ -606,7 +607,7 @@ figsupp2_tifname=paste0(path,"/results/Simulation/figures_review/tif/figsupp2.ti
 ggsave(final_plot_allphy,
        filename = figsupp2_tifname,
        device = "tiff",compression = "lzw",
-       width = 30, height = 20,
+       width = 21, height = 25,
        dpi = 600,
        units = "cm",
        create.dir = TRUE)
