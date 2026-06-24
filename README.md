@@ -21,7 +21,7 @@ Our work provides a framework for extracting microbial signals from host-dominat
 
 
 
-![fig1](figures/fig1.jpg)
+![fig1](figures/jpeg/fig1.jpg)
 
 ## Github repository description
 
